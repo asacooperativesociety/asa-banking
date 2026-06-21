@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASA Cooperative Society - Core Banking System</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+body { background: #f4f5f7; }
+
+/* ===== LOGIN SCREEN ===== */
+#login-screen { display: flex; align-items: center; justify-content: center; height: 100vh; }
+.login-box { background: #fff; border-radius: 12px; padding: 40px; width: 360px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
+.login-logo { text-align: center; margin-bottom: 20px; }
+.login-box h1 { text-align: center; font-size: 20px; color: #0d2137; margin-bottom: 4px; }
+.login-box p.sub { text-align: center; font-size: 12px; color: #888; margin-bottom: 24px; }
+.login-box input { width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+.login-box button { width: 100%; padding: 11px; background: #0d2137; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; margin-top: 8px; }
+.login-box button:hover { background: #16314f; }
+#login-error { color: #A32D2D; font-size: 12px; text-align: center; margin-top: 10px; display: none; }
+.config-note { font-size: 11px; color: #999; text-align: center; margin-top: 16px; }
+
+/* ===== MAIN APP ===== */
+#app-screen { display: none; height: 100vh; }
+.app { display: flex; height: 100vh; }
+.sidebar { width: 220px; background: #0d2137; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.sb-head { padding: 14px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px; }
+.sb-logo { width: 34px; height: 34px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sb-head .t1 { font-size: 13px; font-weight: 500; }
+.sb-head .t2 { font-size: 9px; color: rgba(255,255,255,0.45); }
+.nav-sec { padding: 6px 0; }
+.nav-lbl { font-size: 9px; color: rgba(255,255,255,0.3); padding: 0 12px 4px; letter-spacing: 0.08em; text-transform: uppercase; }
+.nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; font-size: 12px; color: rgba(255,255,255,0.65); border-left: 3px solid transparent; }
+.nav-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.nav-item.active { background: rgba(255,255,255,0.12); color: #fff; border-left-color: #e65c00; }
+.logout-btn { margin: auto 12px 12px; padding: 7px; text-align: center; font-size: 11px; background: rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer; }
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.topbar { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 10px 18px; display: flex; align-items: center; justify-content: space-between; }
+.topbar-title { font-size: 15px; font-weight: 500; color: #222; }
+.topbar-user { font-size: 12px; color: #666; }
+.content { flex: 1; overflow-y: auto; padding: 16px; }
+.page { display: none; }
+.page.active { display: block; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.stat { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 12px 14px; }
+.stat-lbl { font-size: 11px; color: #888; margin-bottom: 4px; }
+.stat-val { font-size: 20px; font-weight: 500; color: #222; }
+.card { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+.card-title { font-size: 14px; font-weight: 500; color: #222; margin-bottom: 12px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.form-grp { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.form-grp label { font-size: 12px; color: #666; }
+.form-grp input, .form-grp select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; width: 100%; }
+.btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; border: 1px solid #ddd; background: #fff; }
+.btn-primary { background: #0d2137; color: #fff; border: none; }
+.btn-orange { background: #e65c00; color: #fff; border: none; }
+.btn-row { display: flex; gap: 8px; margin-top: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { text-align: left; padding: 8px 10px; font-size: 11px; color: #888; border-bottom: 1px solid #eee; }
+td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; }
+.bg { background: #EAF3DE; color: #3B6D11; }
+.ba { background: #FAEEDA; color: #854F0B; }
+.br { background: #FCEBEB; color: #A32D2D; }
+.success-msg { background: #EAF3DE; color: #3B6D11; padding: 10px 14px; border-radius: 8px; font-size: 12px; margin-top: 10px; }
+.loading { text-align: center; padding: 40px; color: #888; }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN SCREEN ============ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <svg width="60" height="60" viewBox="0 0 400 400">
+        <circle cx="200" cy="170" r="100" fill="none" stroke="#0F6E56" stroke-width="6"/>
+        <path d="M200 95 L233 135 L167 135 Z" fill="#0F6E56"/>
+        <rect x="160" y="137" width="80" height="9" fill="#0F6E56"/>
+        <rect x="170" y="148" width="11" height="52" fill="#0F6E56"/>
+        <rect x="194" y="148" width="11" height="52" fill="#0F6E56"/>
+        <rect x="218" y="148" width="11" height="52" fill="#0F6E56"/>
+        <rect x="242" y="148" width="11" height="52" fill="#0F6E56"/>
+        <rect x="156" y="202" width="88" height="9" fill="#0F6E56"/>
+      </svg>
+    </div>
+    <h1>ASA Cooperative Society</h1>
+    <p class="sub">Core Banking System - Staff Login</p>
+    <input type="text" id="login-username" placeholder="Username">
+    <input type="password" id="login-password" placeholder="Password">
+    <button onclick="doLogin()">Login</button>
+    <div id="login-error">Galat username ya password</div>
+    <p class="config-note">Default: admin / admin123</p>
+  </div>
+</div>
+
+<!-- ============ MAIN APP SCREEN ============ -->
+<div id="app-screen">
+<div class="app">
+  <div class="sidebar">
+    <div class="sb-head">
+      <div class="sb-logo">
+        <svg width="22" height="22" viewBox="0 0 400 400">
+          <circle cx="200" cy="170" r="100" fill="none" stroke="#0F6E56" stroke-width="6"/>
+          <path d="M200 95 L233 135 L167 135 Z" fill="#0F6E56"/>
+          <rect x="160" y="137" width="80" height="9" fill="#0F6E56"/>
+          <rect x="170" y="148" width="11" height="52" fill="#0F6E56"/>
+          <rect x="194" y="148" width="11" height="52" fill="#0F6E56"/>
+          <rect x="218" y="148" width="11" height="52" fill="#0F6E56"/>
+          <rect x="242" y="148" width="11" height="52" fill="#0F6E56"/>
+          <rect x="156" y="202" width="88" height="9" fill="#0F6E56"/>
+        </svg>
+      </div>
+      <div><div class="t1">ASA Society</div><div class="t2">Core Banking v1.0</div></div>
+    </div>
+    <div class="nav-sec">
+      <div class="nav-lbl">Main</div>
+      <div class="nav-item active" onclick="goPage('dash', this)">Dashboard</div>
+    </div>
+    <div class="nav-sec">
+      <div class="nav-lbl">Members</div>
+      <div class="nav-item" onclick="goPage('acc', this)">Account Opening</div>
+      <div class="nav-item" onclick="goPage('acclist', this)">Member List</div>
+    </div>
+    <div class="nav-sec">
+      <div class="nav-lbl">Deposits</div>
+      <div class="nav-item" onclick="goPage('fd', this)">Fixed Deposit (FD)</div>
+      <div class="nav-item" onclick="goPage('rd', this)">Recurring (RD)</div>
+      <div class="nav-item" onclick="goPage('td', this)">Term Deposit (TD)</div>
+    </div>
+    <div class="nav-sec">
+      <div class="nav-lbl">100-Day Loans</div>
+      <div class="nav-item" onclick="goPage('loan', this)">New Loan</div>
+      <div class="nav-item" onclick="goPage('coll', this)">Daily Collection</div>
+      <div class="nav-item" onclick="goPage('loanlist', this)">All Loans</div>
+    </div>
+    <div class="logout-btn" onclick="doLogout()">Logout</div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="pg-title">Dashboard</div>
+      <div class="topbar-user" id="user-info"></div>
+    </div>
+    <div class="content">
+
+      <div class="page active" id="page-dash">
+        <div class="stat-grid">
+          <div class="stat"><div class="stat-lbl">Total Members</div><div class="stat-val" id="stat-members">-</div></div>
+          <div class="stat"><div class="stat-lbl">Active Loans</div><div class="stat-val" id="stat-loans">-</div></div>
+          <div class="stat"><div class="stat-lbl">Active FDs</div><div class="stat-val" id="stat-fds">-</div></div>
+          <div class="stat"><div class="stat-lbl">Branch</div><div class="stat-val" id="stat-branch">-</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Recent Members</div>
+          <div id="recent-members" class="loading">Loading...</div>
+        </div>
+      </div>
+
+      <div class="page" id="page-acc">
+        <div class="card">
+          <div class="card-title">New Account Opening</div>
+          <div class="three-col">
+            <div class="form-grp"><label>First Name *</label><input type="text" id="m-fname"></div>
+            <div class="form-grp"><label>Last Name</label><input type="text" id="m-lname"></div>
+            <div class="form-grp"><label>Father's/Husband's Name</label><input type="text" id="m-father"></div>
+          </div>
+          <div class="three-col">
+            <div class="form-grp"><label>Mobile *</label><input type="text" id="m-mobile"></div>
+            <div class="form-grp"><label>Date of Birth</label><input type="date" id="m-dob"></div>
+            <div class="form-grp"><label>Account Type</label>
+              <select id="m-acctype">
+                <option>Simple Saving Account</option>
+                <option>Mahila Bachat Khata</option>
+                <option>Senior Saving Account</option>
+                <option>Sukanya Bachat Khata</option>
+                <option>Saman Bachat Khata</option>
+                <option>Daily Bachat Khata</option>
+                <option>Super Saving Account</option>
+                <option>Classic Saving Account</option>
+              </select>
+            </div>
+          </div>
+          <div class="three-col">
+            <div class="form-grp"><label>Opening Amount (₹)</label>
+              <select id="m-amount"><option value="3500">3,500</option><option value="5000">5,000</option><option value="7500">7,500</option><option value="10500">10,500</option></select>
+            </div>
+            <div class="form-grp"><label>Payment Mode</label><select id="m-paymode"><option>Cash</option><option>UPI</option><option>Cheque</option></select></div>
+            <div class="form-grp"><label>Aadhar No.</label><input type="text" id="m-aadhar"></div>
+          </div>
+          <div class="form-grp"><label>Address</label><input type="text" id="m-address"></div>
+          <div class="three-col">
+            <div class="form-grp"><label>District</label><input type="text" id="m-district"></div>
+            <div class="form-grp"><label>State</label><input type="text" id="m-state" value="Rajasthan"></div>
+            <div class="form-grp"><label>PIN Code</label><input type="text" id="m-pin"></div>
+          </div>
+          <div class="btn-row"><button class="btn btn-orange" onclick="createAccount()">Account Kholo</button></div>
+          <div id="acc-result"></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-acclist">
+        <div class="card">
+          <div class="card-title">All Members</div>
+          <div class="three-col" style="margin-bottom:10px">
+            <div class="form-grp"><label>Search (Name / Mobile / Account No)</label><input type="text" id="member-search" oninput="searchMembers()" placeholder="Type to search..."></div>
+          </div>
+          <div id="member-table" class="loading">Loading...</div>
+          <div id="member-pagination" style="display:flex;gap:8px;justify-content:center;margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-fd">
+        <div class="card">
+          <div class="card-title">New Fixed Deposit</div>
+          <div class="three-col">
+            <div class="form-grp"><label>Member Account No.</label><input type="text" id="fd-accno" placeholder="ASA-001"></div>
+            <div class="form-grp"><label>Amount (₹)</label><input type="number" id="fd-amount" value="50000"></div>
+            <div class="form-grp"><label>Tenure</label>
+              <select id="fd-tenure"><option value="1">1 Year - General 7.5% / Senior 8.5%</option><option value="3">3 Years - General 8.2% / Senior 8.7%</option><option value="5">5 Years - General 8.5% / Senior 9.0%</option></select>
+            </div>
+          </div>
+          <div class="form-grp"><label>Category</label><select id="fd-cat"><option value="general">General Citizen</option><option value="senior">Senior Citizen</option></select></div>
+          <div class="btn-row"><button class="btn btn-orange" onclick="createFD()">FD Kholo</button></div>
+          <div id="fd-result"></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-rd">
+        <div class="card">
+          <div class="card-title">New Recurring Deposit</div>
+          <div class="three-col">
+            <div class="form-grp"><label>Member Account No.</label><input type="text" id="rd-accno" placeholder="ASA-001"></div>
+            <div class="form-grp"><label>Monthly Installment (₹)</label><input type="number" id="rd-amount" value="2000"></div>
+            <div class="form-grp"><label>Tenure (Months)</label><select id="rd-months"><option value="12">12</option><option value="24" selected>24</option><option value="36">36</option><option value="60">60</option></select></div>
+          </div>
+          <div class="form-grp"><label>Category</label><select id="rd-cat"><option value="8.2">General - 8.2%</option><option value="8.5">Girls - 8.5%</option><option value="9.5">Senior Citizen - 9.5%</option></select></div>
+          <div class="btn-row"><button class="btn btn-orange" onclick="createRD()">RD Kholo</button></div>
+          <div id="rd-result"></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-td">
+        <div class="card">
+          <div class="card-title">New Term Deposit</div>
+          <div class="three-col">
+            <div class="form-grp"><label>Member Account No.</label><input type="text" id="td-accno" placeholder="ASA-001"></div>
+            <div class="form-grp"><label>Amount (₹)</label><input type="number" id="td-amount" value="25000"></div>
+            <div class="form-grp"><label>Tenure</label><select id="td-days"><option value="30">30 Days</option><option value="90">90 Days</option><option value="180" selected>180 Days</option><option value="365">365 Days</option></select></div>
+          </div>
+          <div class="form-grp"><label>Category</label><select id="td-cat"><option value="general">General</option><option value="girls">Girls</option><option value="senior">Senior Citizen</option></select></div>
+          <div class="btn-row"><button class="btn btn-orange" onclick="createTD()">TD Kholo</button></div>
+          <div id="td-result"></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-loan">
+        <div class="card">
+          <div class="card-title">New 100-Day Loan</div>
+          <div class="three-col">
+            <div class="form-grp"><label>Member Account No.</label><input type="text" id="ln-accno" placeholder="ASA-001"></div>
+            <div class="form-grp"><label>Category</label>
+              <select id="ln-category"><option>Home Loan</option><option>Business Loan</option><option>Gold Loan</option><option>Education Loan</option><option>Agriculture Loan</option><option>Loan Against Property</option></select>
+            </div>
+            <div class="form-grp"><label>Amount (₹)</label>
+              <select id="ln-amount" onchange="updateLoanPreview()"><option value="5000">5,000</option><option value="10000">10,000</option><option value="25000">25,000</option><option value="50000" selected>50,000</option></select>
+            </div>
+          </div>
+          <div class="form-grp"><label>Guarantor Name</label><input type="text" id="ln-guarantor"></div>
+          <div class="success-msg" id="loan-preview">Daily Collection: ₹500 for 100 days. Interest FREE. Penalty ₹10/day on missed collection.</div>
+          <div class="btn-row"><button class="btn btn-orange" onclick="createLoan()">Loan Approve Karo</button></div>
+          <div id="loan-result"></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-coll">
+        <div class="card">
+          <div class="card-title">Today's Collection</div>
+          <div id="collection-table" class="loading">Loading...</div>
+        </div>
+      </div>
+
+      <div class="page" id="page-loanlist">
+        <div class="card">
+          <div class="card-title">All Loans</div>
+          <div id="loan-table" class="loading">Loading...</div>
+          <div id="loan-pagination" style="display:flex;gap:8px;justify-content:center;margin-top:12px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// ============================================================
+// SUPABASE CONFIGURATION - REPLACE WITH YOUR OWN VALUES
+// ============================================================
+const SUPABASE_URL = 'https://ytdtcwoinsojeautrwxk.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_MlFcSGPN8WdsQySyuIY2bw_DteL0cNH';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentBranchId = null;
+
+// ============================================================
+// LOGIN
+// ============================================================
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!username || !password) return;
+
+  const { data, error } = await supabase
+    .from('staff')
+    .select('*, branches(*)')
+    .eq('username', username)
+    .eq('password_hash', password)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (error || !data) {
+    document.getElementById('login-error').style.display = 'block';
+    return;
+  }
+
+  currentUser = data;
+  currentBranchId = data.branch_id;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  document.getElementById('user-info').textContent = data.full_name + ' (' + data.role + ')';
+  loadDashboard();
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+const pageTitles = { dash: 'Dashboard', acc: 'Account Opening', acclist: 'Member List', fd: 'Fixed Deposit', rd: 'Recurring Deposit', td: 'Term Deposit', loan: 'New Loan', coll: 'Daily Collection', loanlist: 'All Loans' };
+
+function goPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('pg-title').textContent = pageTitles[id];
+  if (id === 'dash') loadDashboard();
+  if (id === 'acclist') loadMembers();
+  if (id === 'coll') loadCollections();
+  if (id === 'loanlist') loadLoans();
+}
+
+function fmt(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
+function genAccountNo() { return 'ASA-' + Math.floor(1000 + Math.random() * 9000); }
+function genVoucherNo() { return 'V-' + Date.now().toString().slice(-8); }
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+async function loadDashboard() {
+  const isAdmin = currentUser.role === 'super_admin';
+  let memberQuery = db.from('members').select('*', { count: 'exact', head: true });
+  let loanQuery = db.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'active');
+  let fdQuery = db.from('fixed_deposits').select('*', { count: 'exact', head: true }).eq('status', 'active');
+
+  if (!isAdmin) {
+    memberQuery = memberQuery.eq('branch_id', currentBranchId);
+    loanQuery = loanQuery.eq('branch_id', currentBranchId);
+    fdQuery = fdQuery.eq('branch_id', currentBranchId);
+  }
+
+  const [{ count: memberCount }, { count: loanCount }, { count: fdCount }] = await Promise.all([memberQuery, loanQuery, fdQuery]);
+
+  document.getElementById('stat-members').textContent = memberCount || 0;
+  document.getElementById('stat-loans').textContent = loanCount || 0;
+  document.getElementById('stat-fds').textContent = fdCount || 0;
+  document.getElementById('stat-branch').textContent = isAdmin ? 'All Branches' : (currentUser.branches?.branch_name || '-');
+
+  let recentQuery = db.from('members').select('account_no, first_name, last_name, account_type, opened_at').order('opened_at', { ascending: false }).limit(5);
+  if (!isAdmin) recentQuery = recentQuery.eq('branch_id', currentBranchId);
+  const { data: recent } = await recentQuery;
+
+  let html = '<table><thead><tr><th>Acc No</th><th>Name</th><th>Type</th><th>Date</th></tr></thead><tbody>';
+  if (recent && recent.length) {
+    recent.forEach(m => {
+      html += `<tr><td>${m.account_no}</td><td>${m.first_name} ${m.last_name || ''}</td><td>${m.account_type}</td><td>${new Date(m.opened_at).toLocaleDateString('en-IN')}</td></tr>`;
+    });
+  } else {
+    html += '<tr><td colspan="4">Koi member nahi mila</td></tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('recent-members').innerHTML = html;
+}
+
+// ============================================================
+// ACCOUNT OPENING
+// ============================================================
+async function createAccount() {
+  const fname = document.getElementById('m-fname').value.trim();
+  const mobile = document.getElementById('m-mobile').value.trim();
+  if (!fname || !mobile) { alert('Naam aur Mobile zaroori hai'); return; }
+
+  const accountNo = genAccountNo();
+  const payload = {
+    account_no: accountNo,
+    branch_id: currentBranchId,
+    account_type: document.getElementById('m-acctype').value,
+    first_name: fname,
+    last_name: document.getElementById('m-lname').value.trim(),
+    father_husband_name: document.getElementById('m-father').value.trim(),
+    date_of_birth: document.getElementById('m-dob').value || null,
+    mobile_primary: mobile,
+    aadhar_no: document.getElementById('m-aadhar').value.trim(),
+    address: document.getElementById('m-address').value.trim(),
+    district: document.getElementById('m-district').value.trim(),
+    state: document.getElementById('m-state').value.trim(),
+    pin_code: document.getElementById('m-pin').value.trim(),
+    opening_amount: parseFloat(document.getElementById('m-amount').value),
+    current_balance: parseFloat(document.getElementById('m-amount').value),
+    payment_mode: document.getElementById('m-paymode').value,
+    opened_by: currentUser.id
+  };
+
+  const { error } = await db.from('members').insert(payload);
+  const resultDiv = document.getElementById('acc-result');
+  if (error) {
+    resultDiv.innerHTML = `<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Error: ${error.message}</div>`;
+  } else {
+    resultDiv.innerHTML = `<div class="success-msg">Account khul gaya! Account No: <b>${accountNo}</b></div>`;
+    document.getElementById('m-fname').value = '';
+    document.getElementById('m-lname').value = '';
+    document.getElementById('m-mobile').value = '';
+  }
+}
+
+// ============================================================
+// MEMBER LIST - Paginated for large scale (50 lakh+ records)
+// ============================================================
+const PAGE_SIZE = 50;
+let currentMemberPage = 0;
+let memberSearchTerm = '';
+
+async function loadMembers(page = 0) {
+  currentMemberPage = page;
+  const isAdmin = currentUser.role === 'super_admin';
+  const from = page * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  let q = db.from('members').select('*', { count: 'exact' }).order('opened_at', { ascending: false }).range(from, to);
+  if (!isAdmin) q = q.eq('branch_id', currentBranchId);
+  if (memberSearchTerm) {
+    q = q.or(`first_name.ilike.%${memberSearchTerm}%,last_name.ilike.%${memberSearchTerm}%,mobile_primary.ilike.%${memberSearchTerm}%,account_no.ilike.%${memberSearchTerm}%`);
+  }
+
+  const { data, count, error } = await q;
+
+  let html = '<table><thead><tr><th>Acc No</th><th>Name</th><th>Mobile</th><th>Type</th><th>Balance</th><th>Status</th></tr></thead><tbody>';
+  if (data && data.length) {
+    data.forEach(m => {
+      html += `<tr><td>${m.account_no}</td><td>${m.first_name} ${m.last_name || ''}</td><td>${m.mobile_primary}</td><td>${m.account_type}</td><td>${fmt(m.current_balance)}</td><td><span class="badge bg">${m.status}</span></td></tr>`;
+    });
+  } else {
+    html += '<tr><td colspan="6">Koi member nahi mila</td></tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('member-table').innerHTML = html;
+
+  // Pagination controls
+  const totalPages = Math.ceil((count || 0) / PAGE_SIZE);
+  let pagHtml = `<button class="btn" onclick="loadMembers(${Math.max(0, page - 1)})" ${page === 0 ? 'disabled' : ''}>Previous</button>`;
+  pagHtml += `<span style="padding:8px 12px;font-size:12px;color:#666">Page ${page + 1} of ${totalPages || 1} (${count || 0} total members)</span>`;
+  pagHtml += `<button class="btn" onclick="loadMembers(${page + 1})" ${page + 1 >= totalPages ? 'disabled' : ''}>Next</button>`;
+  document.getElementById('member-pagination').innerHTML = pagHtml;
+}
+
+let searchDebounce = null;
+function searchMembers() {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    memberSearchTerm = document.getElementById('member-search').value.trim();
+    loadMembers(0);
+  }, 400);
+}
+
+// ============================================================
+// FD / RD / TD
+// ============================================================
+const fdRateTable = { 1: { general: 7.5, senior: 8.5 }, 3: { general: 8.2, senior: 8.7 }, 5: { general: 8.5, senior: 9.0 } };
+const tdRateTable = {
+  30: { general: 4.5, girls: 6.5, senior: 7.0 },
+  90: { general: 5.0, girls: 6.5, senior: 8.0 },
+  180: { general: 5.5, girls: 6.5, senior: 9.0 },
+  365: { general: 6.0, girls: 6.5, senior: 10.5 }
+};
+
+async function findMemberByAccNo(accNo) {
+  const { data } = await db.from('members').select('id').eq('account_no', accNo.trim()).maybeSingle();
+  return data;
+}
+
+async function createFD() {
+  const accNo = document.getElementById('fd-accno').value;
+  const member = await findMemberByAccNo(accNo);
+  if (!member) { document.getElementById('fd-result').innerHTML = '<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Account number nahi mila</div>'; return; }
+
+  const amount = parseFloat(document.getElementById('fd-amount').value);
+  const years = parseInt(document.getElementById('fd-tenure').value);
+  const category = document.getElementById('fd-cat').value;
+  const rate = fdRateTable[years][category];
+  const startDate = new Date();
+  const maturityDate = new Date();
+  maturityDate.setFullYear(maturityDate.getFullYear() + years);
+  const maturityAmount = amount * Math.pow(1 + rate / (100 * 4), 4 * years);
+
+  const fdNo = 'FD-' + Math.floor(1000 + Math.random() * 9000);
+  const { error } = await db.from('fixed_deposits').insert({
+    fd_no: fdNo, member_id: member.id, branch_id: currentBranchId,
+    principal_amount: amount, tenure_years: years, category, interest_rate: rate,
+    start_date: startDate.toISOString().split('T')[0],
+    maturity_date: maturityDate.toISOString().split('T')[0],
+    maturity_amount: maturityAmount
+  });
+
+  document.getElementById('fd-result').innerHTML = error
+    ? `<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Error: ${error.message}</div>`
+    : `<div class="success-msg">FD khul gaya! FD No: <b>${fdNo}</b> | Rate: ${rate}% | Maturity: ${fmt(maturityAmount)}</div>`;
+}
+
+async function createRD() {
+  const accNo = document.getElementById('rd-accno').value;
+  const member = await findMemberByAccNo(accNo);
+  if (!member) { document.getElementById('rd-result').innerHTML = '<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Account number nahi mila</div>'; return; }
+
+  const monthly = parseFloat(document.getElementById('rd-amount').value);
+  const months = parseInt(document.getElementById('rd-months').value);
+  const rate = parseFloat(document.getElementById('rd-cat').value);
+  const category = rate === 8.2 ? 'general' : rate === 8.5 ? 'girls' : 'senior';
+  const startDate = new Date();
+  const maturityDate = new Date();
+  maturityDate.setMonth(maturityDate.getMonth() + months);
+
+  const rdNo = 'RD-' + Math.floor(1000 + Math.random() * 9000);
+  const { error } = await db.from('recurring_deposits').insert({
+    rd_no: rdNo, member_id: member.id, branch_id: currentBranchId,
+    monthly_installment: monthly, tenure_months: months, category, interest_rate: rate,
+    start_date: startDate.toISOString().split('T')[0],
+    maturity_date: maturityDate.toISOString().split('T')[0]
+  });
+
+  document.getElementById('rd-result').innerHTML = error
+    ? `<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Error: ${error.message}</div>`
+    : `<div class="success-msg">RD khul gaya! RD No: <b>${rdNo}</b> | Rate: ${rate}%</div>`;
+}
+
+async function createTD() {
+  const accNo = document.getElementById('td-accno').value;
+  const member = await findMemberByAccNo(accNo);
+  if (!member) { document.getElementById('td-result').innerHTML = '<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Account number nahi mila</div>'; return; }
+
+  const amount = parseFloat(document.getElementById('td-amount').value);
+  const days = parseInt(document.getElementById('td-days').value);
+  const category = document.getElementById('td-cat').value;
+  const rate = tdRateTable[days][category];
+  const startDate = new Date();
+  const maturityDate = new Date();
+  maturityDate.setDate(maturityDate.getDate() + days);
+  const interest = amount * rate * days / (100 * 365);
+  const maturityAmount = amount + interest;
+
+  const tdNo = 'TD-' + Math.floor(1000 + Math.random() * 9000);
+  const { error } = await db.from('term_deposits').insert({
+    td_no: tdNo, member_id: member.id, branch_id: currentBranchId,
+    deposit_amount: amount, tenure_days: days, category, interest_rate: rate,
+    start_date: startDate.toISOString().split('T')[0],
+    maturity_date: maturityDate.toISOString().split('T')[0],
+    maturity_amount: maturityAmount
+  });
+
+  document.getElementById('td-result').innerHTML = error
+    ? `<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Error: ${error.message}</div>`
+    : `<div class="success-msg">TD khul gaya! TD No: <b>${tdNo}</b> | Rate: ${rate}% | Maturity: ${fmt(maturityAmount)}</div>`;
+}
+
+// ============================================================
+// 100-DAY LOANS
+// ============================================================
+function updateLoanPreview() {
+  const amt = parseInt(document.getElementById('ln-amount').value);
+  document.getElementById('loan-preview').textContent = `Daily Collection: ${fmt(amt / 100)} for 100 days. Interest FREE. Penalty ₹10/day on missed collection.`;
+}
+
+async function createLoan() {
+  const accNo = document.getElementById('ln-accno').value;
+  const member = await findMemberByAccNo(accNo);
+  if (!member) { document.getElementById('loan-result').innerHTML = '<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Account number nahi mila</div>'; return; }
+
+  const amount = parseInt(document.getElementById('ln-amount').value);
+  const dailyCollection = amount / 100;
+  const loanNo = 'LN-' + Math.floor(1000 + Math.random() * 9000);
+
+  const { data: loanData, error } = await db.from('loans').insert({
+    loan_no: loanNo, member_id: member.id, branch_id: currentBranchId,
+    category: document.getElementById('ln-category').value,
+    loan_amount: amount, daily_collection: dailyCollection,
+    guarantor_name: document.getElementById('ln-guarantor').value,
+    start_date: new Date().toISOString().split('T')[0],
+    approved_by: currentUser.id
+  }).select().single();
+
+  if (error) {
+    document.getElementById('loan-result').innerHTML = `<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Error: ${error.message}</div>`;
+    return;
+  }
+
+  // Generate 100 daily collection rows
+  const collections = [];
+  const startDate = new Date();
+  for (let day = 1; day <= 100; day++) {
+    const collDate = new Date(startDate);
+    collDate.setDate(collDate.getDate() + day - 1);
+    collections.push({
+      loan_id: loanData.id, day_number: day,
+      collection_date: collDate.toISOString().split('T')[0],
+      amount_due: dailyCollection
+    });
+  }
+  await db.from('loan_collections').insert(collections);
+
+  document.getElementById('loan-result').innerHTML = `<div class="success-msg">Loan approved! Loan No: <b>${loanNo}</b> | Daily: ${fmt(dailyCollection)}</div>`;
+}
+
+let currentLoanPage = 0;
+async function loadLoans(page = 0) {
+  currentLoanPage = page;
+  const isAdmin = currentUser.role === 'super_admin';
+  const from = page * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  let q = db.from('loans').select('*, members(account_no, first_name, last_name)', { count: 'exact' }).order('created_at', { ascending: false }).range(from, to);
+  if (!isAdmin) q = q.eq('branch_id', currentBranchId);
+  const { data, count } = await q;
+
+  let html = '<table><thead><tr><th>Loan No</th><th>Member</th><th>Category</th><th>Amount</th><th>Daily</th><th>Days Done</th><th>Penalty</th><th>Status</th></tr></thead><tbody>';
+  if (data && data.length) {
+    data.forEach(l => {
+      const name = l.members ? `${l.members.first_name} ${l.members.last_name || ''}` : '-';
+      html += `<tr><td>${l.loan_no}</td><td>${name}</td><td>${l.category}</td><td>${fmt(l.loan_amount)}</td><td>${fmt(l.daily_collection)}</td><td>${l.days_completed}/100</td><td>${fmt(l.total_penalty)}</td><td><span class="badge ${l.status === 'active' ? 'bg' : l.status === 'overdue' ? 'br' : 'ba'}">${l.status}</span></td></tr>`;
+    });
+  } else {
+    html += '<tr><td colspan="8">Koi loan nahi mila</td></tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('loan-table').innerHTML = html;
+
+  const totalPages = Math.ceil((count || 0) / PAGE_SIZE);
+  let pagHtml = `<button class="btn" onclick="loadLoans(${Math.max(0, page - 1)})" ${page === 0 ? 'disabled' : ''}>Previous</button>`;
+  pagHtml += `<span style="padding:8px 12px;font-size:12px;color:#666">Page ${page + 1} of ${totalPages || 1} (${count || 0} total loans)</span>`;
+  pagHtml += `<button class="btn" onclick="loadLoans(${page + 1})" ${page + 1 >= totalPages ? 'disabled' : ''}>Next</button>`;
+  document.getElementById('loan-pagination').innerHTML = pagHtml;
+}
+
+async function loadCollections() {
+  const today = new Date().toISOString().split('T')[0];
+  const isAdmin = currentUser.role === 'super_admin';
+
+  let q = db.from('loan_collections')
+    .select('*, loans(loan_no, branch_id, members(account_no, first_name, last_name))')
+    .eq('collection_date', today)
+    .eq('status', 'pending');
+  const { data } = await q;
+
+  let filtered = data || [];
+  if (!isAdmin) filtered = filtered.filter(c => c.loans?.branch_id === currentBranchId);
+
+  let html = '<table><thead><tr><th>Loan No</th><th>Member</th><th>Day</th><th>Amount Due</th><th>Action</th></tr></thead><tbody>';
+  if (filtered.length) {
+    filtered.forEach(c => {
+      const name = c.loans?.members ? `${c.loans.members.first_name} ${c.loans.members.last_name || ''}` : '-';
+      html += `<tr id="coll-row-${c.id}"><td>${c.loans?.loan_no || '-'}</td><td>${name}</td><td>${c.day_number}/100</td><td>${fmt(c.amount_due)}</td><td><button class="btn btn-primary" onclick="collectPayment('${c.id}', '${c.loan_id}')">Collect</button></td></tr>`;
+    });
+  } else {
+    html += '<tr><td colspan="5">Aaj koi collection due nahi hai</td></tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('collection-table').innerHTML = html;
+}
+
+async function collectPayment(collectionId, loanId) {
+  await db.from('loan_collections').update({
+    status: 'collected', amount_collected: 0, collected_by: currentUser.id, collected_at: new Date().toISOString()
+  }).eq('id', collectionId);
+
+  const { data: loan } = await db.from('loans').select('days_completed, total_collected, daily_collection').eq('id', loanId).single();
+  if (loan) {
+    await db.from('loans').update({
+      days_completed: loan.days_completed + 1,
+      total_collected: loan.total_collected + loan.daily_collection
+    }).eq('id', loanId);
+  }
+
+  document.getElementById('coll-row-' + collectionId).innerHTML = '<td colspan="5" style="color:#3B6D11">Collected ✓</td>';
+}
+
+// Allow Enter key to submit login
+document.getElementById('login-password').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>
