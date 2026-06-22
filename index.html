@@ -99,7 +99,7 @@ td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
 <div id="app-screen">
 <!-- ============ BRANCH LIST MODAL ============ -->
 <div id="branch-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:10px;padding:20px;width:90%;max-width:700px;max-height:80vh;overflow-y:auto;">
+  <div style="background:#fff;border-radius:10px;padding:20px;width:90%;max-width:900px;max-height:80vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <h2 style="font-size:16px;color:#222;">All Branches (Rajasthan)</h2>
       <button class="btn" onclick="closeBranchModal()" style="padding:4px 10px;">Close</button>
@@ -170,44 +170,199 @@ td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
       </div>
 
       <div class="page" id="page-acc">
-        <div class="card">
-          <div class="card-title">New Account Opening</div>
-          <div class="three-col">
-            <div class="form-grp"><label>First Name *</label><input type="text" id="m-fname"></div>
-            <div class="form-grp"><label>Last Name</label><input type="text" id="m-lname"></div>
-            <div class="form-grp"><label>Father's/Husband's Name</label><input type="text" id="m-father"></div>
+        <!-- ASA FORM HEADER (replaces "Federal Bank" branding from reference) -->
+        <div style="background:#0d2137;color:#fff;border-radius:10px;padding:16px 20px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:18px;font-weight:600;">ASA Cooperative Society</div>
+            <div style="font-size:11px;opacity:0.7;">Account Opening Form &middot; Form Version C-2026</div>
           </div>
-          <div class="three-col">
-            <div class="form-grp"><label>Mobile *</label><input type="text" id="m-mobile"></div>
-            <div class="form-grp"><label>Date of Birth</label><input type="date" id="m-dob"></div>
-            <div class="form-grp"><label>Account Type</label>
-              <select id="m-acctype">
-                <option>Simple Saving Account</option>
-                <option>Mahila Bachat Khata</option>
-                <option>Senior Saving Account</option>
-                <option>Sukanya Bachat Khata</option>
-                <option>Saman Bachat Khata</option>
-                <option>Daily Bachat Khata</option>
-                <option>Super Saving Account</option>
-                <option>Classic Saving Account</option>
-              </select>
+          <div style="background:#fff;color:#0d2137;border-radius:6px;padding:6px 14px;font-size:11px;text-align:center;">
+            <div style="font-weight:600;">PASSPORT PHOTO</div>
+            <div id="acc-photo-preview" style="width:60px;height:70px;margin:4px auto 0;background:#f0f0f0;border:1px dashed #999;display:flex;align-items:center;justify-content:center;font-size:9px;color:#888;overflow:hidden;">No Photo</div>
+          </div>
+        </div>
+
+        <div class="tab-row" style="display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid #eee;">
+          <div class="acc-tab active" data-tab="personal" onclick="switchAccTab('personal')" style="padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:2px solid #e65c00;color:#0d2137;font-weight:500;">1. Personal Info</div>
+          <div class="acc-tab" data-tab="kyc" onclick="switchAccTab('kyc')" style="padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;color:#888;">2. KYC Documents</div>
+          <div class="acc-tab" data-tab="address" onclick="switchAccTab('address')" style="padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;color:#888;">3. Address & Account</div>
+          <div class="acc-tab" data-tab="nominee" onclick="switchAccTab('nominee')" style="padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;color:#888;">4. Nominee</div>
+          <div class="acc-tab" data-tab="crosssale" onclick="switchAccTab('crosssale')" style="padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;color:#888;">5. Cross-Sale</div>
+        </div>
+
+        <!-- TAB 1: PERSONAL INFO -->
+        <div class="acc-tab-content" id="acctab-personal">
+          <div class="card">
+            <div class="card-title">Applicant Personal Info</div>
+            <div class="three-col">
+              <div class="form-grp"><label>First Name *</label><input type="text" id="m-fname"></div>
+              <div class="form-grp"><label>Middle Name</label><input type="text" id="m-mname"></div>
+              <div class="form-grp"><label>Last Name</label><input type="text" id="m-lname"></div>
+            </div>
+            <div class="three-col">
+              <div class="form-grp"><label>Father's/Husband's Name *</label><input type="text" id="m-father"></div>
+              <div class="form-grp"><label>Mother's Name</label><input type="text" id="m-mother"></div>
+              <div class="form-grp"><label>Gender</label>
+                <select id="m-gender"><option>Male</option><option>Female</option><option>Third Gender</option></select>
+              </div>
+            </div>
+            <div class="three-col">
+              <div class="form-grp"><label>Date of Birth *</label><input type="date" id="m-dob"></div>
+              <div class="form-grp"><label>Marital Status</label>
+                <select id="m-marital"><option>Single</option><option>Married</option><option>Others</option></select>
+              </div>
+              <div class="form-grp"><label>Mobile *</label><input type="text" id="m-mobile" maxlength="10" placeholder="10 digit mobile"></div>
+            </div>
+            <div class="three-col">
+              <div class="form-grp"><label>Alternate Mobile</label><input type="text" id="m-mobile2" maxlength="10"></div>
+              <div class="form-grp"><label>Email</label><input type="email" id="m-email"></div>
+              <div class="form-grp"><label>Occupation</label>
+                <select id="m-occupation"><option>Salaried</option><option>Self Employed</option><option>Retired</option><option>Home Maker</option><option>Student</option><option>Unemployed</option><option>Other</option></select>
+              </div>
+            </div>
+            <div class="three-col">
+              <div class="form-grp"><label>Monthly Income (₹)</label>
+                <select id="m-income"><option value="10000">≤ ₹10,000</option><option value="25000">₹10,001 - ₹25,000</option><option value="50000">₹25,001 - ₹50,000</option><option value="100000">₹50,001 - ₹1,00,000</option><option value="500000">₹1,00,001 - ₹5 Lakhs</option><option value="999999999">Above ₹5 Lakhs</option></select>
+              </div>
+              <div class="form-grp"><label>Account Type *</label>
+                <select id="m-acctype">
+                  <option>Simple Saving Account</option>
+                  <option>Mahila Bachat Khata</option>
+                  <option>Senior Saving Account</option>
+                  <option>Sukanya Bachat Khata</option>
+                  <option>Saman Bachat Khata</option>
+                  <option>Daily Bachat Khata</option>
+                  <option>Super Saving Account</option>
+                  <option>Classic Saving Account</option>
+                </select>
+              </div>
+              <div class="form-grp"><label>Photo Upload</label><input type="file" id="m-photo-file" accept="image/*" onchange="previewPhoto(this)"></div>
+            </div>
+            <div class="btn-row"><button class="btn btn-primary" onclick="switchAccTab('kyc')">Next: KYC Documents →</button></div>
+          </div>
+        </div>
+
+        <!-- TAB 2: KYC DOCUMENTS -->
+        <div class="acc-tab-content" id="acctab-kyc" style="display:none;">
+          <div class="card">
+            <div class="card-title">Officially Valid Documents (KYC)</div>
+            <div class="three-col">
+              <div class="form-grp"><label>Aadhar Number</label><input type="text" id="m-aadhar" maxlength="12" placeholder="12 digit Aadhar"></div>
+              <div class="form-grp"><label>Aadhar Document Upload</label><input type="file" id="m-aadhar-file" accept="image/*,.pdf"></div>
+              <div class="form-grp"><label>PAN Number</label><input type="text" id="m-pan" maxlength="10" placeholder="ABCDE1234F" style="text-transform:uppercase;"></div>
+            </div>
+            <div class="three-col">
+              <div class="form-grp"><label>PAN Document Upload</label><input type="file" id="m-pan-file" accept="image/*,.pdf"></div>
+              <div class="form-grp"><label>Voter ID Number</label><input type="text" id="m-voterid"></div>
+              <div class="form-grp"><label>Voter ID Upload</label><input type="file" id="m-voterid-file" accept="image/*,.pdf"></div>
+            </div>
+            <div class="three-col">
+              <div class="form-grp"><label>Driving License Number</label><input type="text" id="m-dl"></div>
+              <div class="form-grp"><label>Driving License Upload</label><input type="file" id="m-dl-file" accept="image/*,.pdf"></div>
+              <div class="form-grp"><label>&nbsp;</label></div>
+            </div>
+            <div class="alert" style="background:#FFF8E6;color:#854F0B;padding:8px 12px;border-radius:6px;font-size:12px;margin-top:6px;">Note: Aadhar ya kam se kam ek aur ID proof zaroori hai.</div>
+            <div class="btn-row"><button class="btn" onclick="switchAccTab('personal')">← Back</button><button class="btn btn-primary" onclick="switchAccTab('address')">Next: Address & Account →</button></div>
+          </div>
+        </div>
+
+        <!-- TAB 3: ADDRESS & ACCOUNT -->
+        <div class="acc-tab-content" id="acctab-address" style="display:none;">
+          <div class="card">
+            <div class="card-title">Address Proof & Communication Address</div>
+            <div class="three-col">
+              <div class="form-grp"><label>Address Proof Type</label>
+                <select id="m-addrprooftype"><option>Aadhar Card</option><option>Electricity Bill</option><option>Bank Statement</option><option>Mobile Bill</option><option>Existing Passbook</option></select>
+              </div>
+              <div class="form-grp"><label>Address Proof Upload</label><input type="file" id="m-addrproof-file" accept="image/*,.pdf"></div>
+              <div class="form-grp"><label>&nbsp;</label></div>
+            </div>
+            <div class="form-grp"><label>Address</label><input type="text" id="m-address" placeholder="House No., Street"></div>
+            <div class="three-col">
+              <div class="form-grp"><label>Village/Town</label><input type="text" id="m-village"></div>
+              <div class="form-grp"><label>Tehsil</label><input type="text" id="m-tehsil"></div>
+              <div class="form-grp"><label>District</label><input type="text" id="m-district"></div>
+            </div>
+            <div class="three-col">
+              <div class="form-grp"><label>State</label><input type="text" id="m-state" value="Rajasthan"></div>
+              <div class="form-grp"><label>PIN Code</label><input type="text" id="m-pin" maxlength="6"></div>
+              <div class="form-grp"><label>&nbsp;</label></div>
             </div>
           </div>
-          <div class="three-col">
-            <div class="form-grp"><label>Opening Amount (₹)</label>
-              <select id="m-amount"><option value="3500">3,500</option><option value="5000">5,000</option><option value="7500">7,500</option><option value="10500">10,500</option></select>
+          <div class="card">
+            <div class="card-title">Account Opening Details</div>
+            <div class="three-col">
+              <div class="form-grp"><label>Opening Amount (₹) *</label>
+                <select id="m-amount"><option value="3500">3,500</option><option value="5000">5,000</option><option value="7500">7,500</option><option value="10500">10,500</option></select>
+              </div>
+              <div class="form-grp"><label>Payment Mode</label><select id="m-paymode"><option>Cash</option><option>UPI</option><option>Cheque</option></select></div>
+              <div class="form-grp"><label>Branch</label><input type="text" id="m-branch-display" value="" disabled></div>
             </div>
-            <div class="form-grp"><label>Payment Mode</label><select id="m-paymode"><option>Cash</option><option>UPI</option><option>Cheque</option></select></div>
-            <div class="form-grp"><label>Aadhar No.</label><input type="text" id="m-aadhar"></div>
+            <div class="btn-row"><button class="btn" onclick="switchAccTab('kyc')">← Back</button><button class="btn btn-primary" onclick="switchAccTab('nominee')">Next: Nominee →</button></div>
           </div>
-          <div class="form-grp"><label>Address</label><input type="text" id="m-address"></div>
-          <div class="three-col">
-            <div class="form-grp"><label>District</label><input type="text" id="m-district"></div>
-            <div class="form-grp"><label>State</label><input type="text" id="m-state" value="Rajasthan"></div>
-            <div class="form-grp"><label>PIN Code</label><input type="text" id="m-pin"></div>
+        </div>
+
+        <!-- TAB 4: NOMINEE -->
+        <div class="acc-tab-content" id="acctab-nominee" style="display:none;">
+          <div class="card">
+            <div class="card-title">Nominee Details</div>
+            <div class="three-col">
+              <div class="form-grp"><label>Nominee Name</label><input type="text" id="m-nom-name"></div>
+              <div class="form-grp"><label>Relationship</label>
+                <select id="m-nom-relation"><option>Spouse</option><option>Son</option><option>Daughter</option><option>Father</option><option>Mother</option><option>Brother</option><option>Sister</option><option>Other</option></select>
+              </div>
+              <div class="form-grp"><label>Nominee Date of Birth</label><input type="date" id="m-nom-dob"></div>
+            </div>
+            <div class="three-col">
+              <div class="form-grp"><label>Nominee Mobile</label><input type="text" id="m-nom-mobile" maxlength="10"></div>
+              <div class="form-grp"><label>Nominee Aadhar (Optional)</label><input type="text" id="m-nom-aadhar" maxlength="12"></div>
+              <div class="form-grp"><label>Nominee Photo Upload</label><input type="file" id="m-nom-photo-file" accept="image/*"></div>
+            </div>
+            <div class="btn-row"><button class="btn" onclick="switchAccTab('address')">← Back</button><button class="btn btn-primary" onclick="switchAccTab('crosssale')">Next: Cross-Sale →</button></div>
           </div>
-          <div class="btn-row"><button class="btn btn-orange" onclick="createAccount()">Account Kholo</button></div>
-          <div id="acc-result"></div>
+        </div>
+
+        <!-- TAB 5: CROSS-SALE -->
+        <div class="acc-tab-content" id="acctab-crosssale" style="display:none;">
+          <div class="card">
+            <div class="card-title">Cross-Sale Products</div>
+            <div class="alert" style="background:#FFF0E6;color:#993C1D;padding:10px 14px;border-radius:6px;font-size:12px;margin-bottom:12px;">
+              Staff ke liye yeh products pitch karna MANDATORY hai. Customer Group/Life/Health Insurance lene se mana kar sakta hai, lekin Demat Account khulna hai.
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead><tr style="text-align:left;border-bottom:1px solid #eee;"><th style="padding:8px;">Product</th><th style="padding:8px;">Customer Opted?</th><th style="padding:8px;">Decline Reason (if not opted)</th></tr></thead>
+              <tbody>
+                <tr style="border-bottom:1px solid #f5f5f5;">
+                  <td style="padding:8px;">Group Insurance</td>
+                  <td style="padding:8px;"><input type="checkbox" id="cs-group"></td>
+                  <td style="padding:8px;"><input type="text" id="cs-group-reason" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;font-size:12px;" placeholder="If declined, reason"></td>
+                </tr>
+                <tr style="border-bottom:1px solid #f5f5f5;">
+                  <td style="padding:8px;">Health Insurance</td>
+                  <td style="padding:8px;"><input type="checkbox" id="cs-health"></td>
+                  <td style="padding:8px;"><input type="text" id="cs-health-reason" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;font-size:12px;" placeholder="If declined, reason"></td>
+                </tr>
+                <tr style="border-bottom:1px solid #f5f5f5;">
+                  <td style="padding:8px;">Life Insurance</td>
+                  <td style="padding:8px;"><input type="checkbox" id="cs-life"></td>
+                  <td style="padding:8px;"><input type="text" id="cs-life-reason" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;font-size:12px;" placeholder="If declined, reason"></td>
+                </tr>
+                <tr>
+                  <td style="padding:8px;">Demat Account (Mandatory)</td>
+                  <td style="padding:8px;"><input type="checkbox" id="cs-demat" checked></td>
+                  <td style="padding:8px;color:#888;">Mandatory for all members</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="form-grp" style="margin-top:14px;">
+              <label><input type="checkbox" id="cs-pitched-confirm"> Main (staff) confirm karta hoon ki maine sabhi 4 products customer ko pitch kiye hain.</label>
+            </div>
+            <div class="btn-row">
+              <button class="btn" onclick="switchAccTab('nominee')">← Back</button>
+              <button class="btn btn-orange" onclick="createAccount()">✓ Account Kholo</button>
+            </div>
+            <div id="acc-result"></div>
+          </div>
         </div>
       </div>
 
@@ -365,6 +520,10 @@ function goPage(id, el) {
   el.classList.add('active');
   document.getElementById('pg-title').textContent = pageTitles[id];
   if (id === 'dash') loadDashboard();
+  if (id === 'acc') {
+    const branchEl = document.getElementById('m-branch-display');
+    if (branchEl) branchEl.value = currentUser.branches?.branch_name || 'Head Office';
+  }
   if (id === 'acclist') loadMembers();
   if (id === 'coll') loadCollections();
   if (id === 'loanlist') loadLoans();
@@ -399,9 +558,46 @@ async function showBranchList() {
 
   let html = '<table><thead><tr><th>Code</th><th>Branch Name</th><th>District</th><th>Members</th><th>Active Loans</th></tr></thead><tbody>';
   counts.forEach(b => {
-    html += `<tr><td>${b.branch_code}</td><td>${b.branch_name}</td><td>${b.district || '-'}</td><td>${b.memberCount}</td><td>${b.loanCount}</td></tr>`;
+    html += `<tr style="cursor:pointer" onclick="showBranchDetail('${b.id}','${b.branch_name.replace(/'/g, "\\'")}')"><td>${b.branch_code}</td><td>${b.branch_name}</td><td>${b.district || '-'}</td><td>${b.memberCount}</td><td>${b.loanCount}</td></tr>`;
   });
   html += '</tbody></table>';
+  document.getElementById('branch-modal-body').innerHTML = html;
+}
+
+async function showBranchDetail(branchId, branchName) {
+  document.getElementById('branch-modal-body').innerHTML = '<div class="loading">Loading...</div>';
+
+  const [{ data: members }, { data: loans }] = await Promise.all([
+    db.from('members').select('*').eq('branch_id', branchId).order('opened_at', { ascending: false }).limit(50),
+    db.from('loans').select('*, members(first_name, last_name)').eq('branch_id', branchId).order('created_at', { ascending: false }).limit(50)
+  ]);
+
+  let html = `<button class="btn" onclick="showBranchList()" style="margin-bottom:12px;padding:5px 12px;">← Back to Branch List</button>`;
+  html += `<h3 style="font-size:14px;margin-bottom:10px;color:#222;">${branchName}</h3>`;
+
+  html += '<h4 style="font-size:12px;color:#666;margin:10px 0 6px;">Members</h4>';
+  html += '<table><thead><tr><th>Acc No</th><th>Name</th><th>Mobile</th><th>Type</th><th>Balance</th></tr></thead><tbody>';
+  if (members && members.length) {
+    members.forEach(m => {
+      html += `<tr><td>${m.account_no}</td><td>${m.first_name} ${m.last_name || ''}</td><td>${m.mobile_primary}</td><td>${m.account_type}</td><td>${fmt(m.current_balance)}</td></tr>`;
+    });
+  } else {
+    html += '<tr><td colspan="5">Koi member nahi mila is branch mein</td></tr>';
+  }
+  html += '</tbody></table>';
+
+  html += '<h4 style="font-size:12px;color:#666;margin:14px 0 6px;">Loans</h4>';
+  html += '<table><thead><tr><th>Loan No</th><th>Member</th><th>Category</th><th>Amount</th><th>Status</th></tr></thead><tbody>';
+  if (loans && loans.length) {
+    loans.forEach(l => {
+      const name = l.members ? `${l.members.first_name} ${l.members.last_name || ''}` : '-';
+      html += `<tr><td>${l.loan_no}</td><td>${name}</td><td>${l.category}</td><td>${fmt(l.loan_amount)}</td><td><span class="badge bg">${l.status}</span></td></tr>`;
+    });
+  } else {
+    html += '<tr><td colspan="5">Koi loan nahi mila is branch mein</td></tr>';
+  }
+  html += '</tbody></table>';
+
   document.getElementById('branch-modal-body').innerHTML = html;
 }
 
@@ -451,41 +647,129 @@ async function loadDashboard() {
 // ============================================================
 // ACCOUNT OPENING
 // ============================================================
+// ============================================================
+// ACCOUNT OPENING - TAB NAVIGATION
+// ============================================================
+function switchAccTab(tabName) {
+  document.querySelectorAll('.acc-tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.acc-tab').forEach(el => {
+    el.classList.remove('active');
+    el.style.borderBottomColor = 'transparent';
+    el.style.color = '#888';
+  });
+  document.getElementById('acctab-' + tabName).style.display = 'block';
+  const activeTab = document.querySelector(`.acc-tab[data-tab="${tabName}"]`);
+  activeTab.classList.add('active');
+  activeTab.style.borderBottomColor = '#e65c00';
+  activeTab.style.color = '#0d2137';
+}
+
+function previewPhoto(input) {
+  const preview = document.getElementById('acc-photo-preview');
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => { preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`; };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+// Upload a file to Supabase Storage, returns public URL or null
+async function uploadDoc(fileInputId, folderName) {
+  const input = document.getElementById(fileInputId);
+  if (!input || !input.files || !input.files[0]) return null;
+  const file = input.files[0];
+  const ext = file.name.split('.').pop();
+  const path = `${folderName}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await db.storage.from('member-documents').upload(path, file);
+  if (error) { console.error('Upload error:', error); return null; }
+  const { data } = db.storage.from('member-documents').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 async function createAccount() {
   const fname = document.getElementById('m-fname').value.trim();
   const mobile = document.getElementById('m-mobile').value.trim();
-  if (!fname || !mobile) { alert('Naam aur Mobile zaroori hai'); return; }
+  if (!fname || !mobile) { alert('Naam aur Mobile zaroori hai'); switchAccTab('personal'); return; }
+
+  const resultDiv = document.getElementById('acc-result');
+  resultDiv.innerHTML = '<div class="success-msg">Account ban raha hai, documents upload ho rahe hain...</div>';
 
   const accountNo = genAccountNo();
+
+  // Upload all documents in parallel
+  const [photoUrl, aadharUrl, panUrl, voterIdUrl, dlUrl, addrProofUrl, nomPhotoUrl] = await Promise.all([
+    uploadDoc('m-photo-file', 'photos'),
+    uploadDoc('m-aadhar-file', 'aadhar'),
+    uploadDoc('m-pan-file', 'pan'),
+    uploadDoc('m-voterid-file', 'voterid'),
+    uploadDoc('m-dl-file', 'dl'),
+    uploadDoc('m-addrproof-file', 'address_proof'),
+    uploadDoc('m-nom-photo-file', 'nominee_photos')
+  ]);
+
   const payload = {
     account_no: accountNo,
     branch_id: currentBranchId,
     account_type: document.getElementById('m-acctype').value,
     first_name: fname,
+    middle_name: document.getElementById('m-mname').value.trim(),
     last_name: document.getElementById('m-lname').value.trim(),
     father_husband_name: document.getElementById('m-father').value.trim(),
     date_of_birth: document.getElementById('m-dob').value || null,
+    gender: document.getElementById('m-gender').value,
     mobile_primary: mobile,
+    mobile_secondary: document.getElementById('m-mobile2').value.trim(),
+    email: document.getElementById('m-email').value.trim(),
+    occupation: document.getElementById('m-occupation').value,
+    monthly_income: parseFloat(document.getElementById('m-income').value),
+    photo_url: photoUrl,
     aadhar_no: document.getElementById('m-aadhar').value.trim(),
+    aadhar_photo_url: aadharUrl,
+    pan_no: document.getElementById('m-pan').value.trim().toUpperCase(),
+    pan_photo_url: panUrl,
+    voter_id_no: document.getElementById('m-voterid').value.trim(),
+    voter_id_photo_url: voterIdUrl,
+    driving_license_no: document.getElementById('m-dl').value.trim(),
+    driving_license_photo_url: dlUrl,
+    address_proof_type: document.getElementById('m-addrprooftype').value,
+    address_proof_url: addrProofUrl,
     address: document.getElementById('m-address').value.trim(),
+    village_town: document.getElementById('m-village').value.trim(),
+    tehsil: document.getElementById('m-tehsil').value.trim(),
     district: document.getElementById('m-district').value.trim(),
     state: document.getElementById('m-state').value.trim(),
     pin_code: document.getElementById('m-pin').value.trim(),
     opening_amount: parseFloat(document.getElementById('m-amount').value),
     current_balance: parseFloat(document.getElementById('m-amount').value),
     payment_mode: document.getElementById('m-paymode').value,
+    nominee_name: document.getElementById('m-nom-name').value.trim(),
+    nominee_relation: document.getElementById('m-nom-relation').value,
+    nominee_mobile: document.getElementById('m-nom-mobile').value.trim(),
+    nominee_dob: document.getElementById('m-nom-dob').value || null,
+    nominee_photo_url: nomPhotoUrl,
+    nominee_aadhar_no: document.getElementById('m-nom-aadhar').value.trim(),
+    cross_sale_group_insurance: document.getElementById('cs-group').checked,
+    cross_sale_health_insurance: document.getElementById('cs-health').checked,
+    cross_sale_life_insurance: document.getElementById('cs-life').checked,
+    cross_sale_demat: document.getElementById('cs-demat').checked,
+    cross_sale_pitched_by_staff: document.getElementById('cs-pitched-confirm').checked,
+    kyc_status: (aadharUrl || panUrl || voterIdUrl || dlUrl) ? 'partial' : 'pending',
     opened_by: currentUser.id
   };
 
   const { error } = await db.from('members').insert(payload);
-  const resultDiv = document.getElementById('acc-result');
   if (error) {
     resultDiv.innerHTML = `<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Error: ${error.message}</div>`;
   } else {
-    resultDiv.innerHTML = `<div class="success-msg">Account khul gaya! Account No: <b>${accountNo}</b></div>`;
-    document.getElementById('m-fname').value = '';
-    document.getElementById('m-lname').value = '';
-    document.getElementById('m-mobile').value = '';
+    resultDiv.innerHTML = `<div class="success-msg">✅ Account khul gaya! Account No: <b>${accountNo}</b></div>`;
+    // Reset form
+    ['m-fname','m-mname','m-lname','m-father','m-mother','m-mobile','m-mobile2','m-email','m-aadhar','m-pan','m-voterid','m-dl','m-address','m-village','m-tehsil','m-district','m-pin','m-nom-name','m-nom-mobile','m-nom-aadhar'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    document.getElementById('m-state').value = 'Rajasthan';
+    document.getElementById('acc-photo-preview').innerHTML = 'No Photo';
+    switchAccTab('personal');
   }
 }
 
