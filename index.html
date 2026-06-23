@@ -141,10 +141,11 @@ td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
       <div class="nav-item" onclick="goPage('td', this)">Term Deposit (TD)</div>
     </div>
     <div class="nav-sec">
-      <div class="nav-lbl">100-Day Loans</div>
+      <div class="nav-lbl">Loans</div>
       <div class="nav-item" onclick="goPage('loan', this)">New Loan</div>
       <div class="nav-item" onclick="goPage('coll', this)">Daily Collection</div>
       <div class="nav-item" onclick="goPage('loanlist', this)">All Loans</div>
+      <div class="nav-item" onclick="goPage('approvals', this)">Pending Approvals</div>
     </div>
     <div class="logout-btn" onclick="doLogout()">Logout</div>
   </div>
@@ -423,19 +424,70 @@ td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
 
       <div class="page" id="page-loan">
         <div class="card">
-          <div class="card-title">New 100-Day Loan</div>
-          <div class="three-col">
-            <div class="form-grp"><label>Member Account No.</label><input type="text" id="ln-accno" placeholder="ASA-001"></div>
-            <div class="form-grp"><label>Category</label>
-              <select id="ln-category"><option>Home Loan</option><option>Business Loan</option><option>Gold Loan</option><option>Education Loan</option><option>Agriculture Loan</option><option>Loan Against Property</option></select>
+          <div class="card-title">Step 1: Select Loan Category</div>
+          <div id="loan-cat-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+            <div class="loan-cat-card" data-cat="small_business" onclick="selectLoanCategory('small_business')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
+              <div style="font-size:13px;font-weight:500;">Chota Business Loan</div>
+              <div style="font-size:11px;color:#888;">₹5,000 - ₹50,000 · Interest Free</div>
             </div>
-            <div class="form-grp"><label>Amount (₹)</label>
-              <select id="ln-amount" onchange="updateLoanPreview()"><option value="5000">5,000</option><option value="10000">10,000</option><option value="25000">25,000</option><option value="50000" selected>50,000</option></select>
+            <div class="loan-cat-card" data-cat="big_business" onclick="selectLoanCategory('big_business')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
+              <div style="font-size:13px;font-weight:500;">Bada Business Loan</div>
+              <div style="font-size:11px;color:#888;">₹1L - ₹10L · ROI 9.5%-14%</div>
+            </div>
+            <div class="loan-cat-card" data-cat="gold_loan" onclick="selectLoanCategory('gold_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
+              <div style="font-size:13px;font-weight:500;">Gold Loan</div>
+              <div style="font-size:11px;color:#888;">₹10,000 - ₹10L+ · 8 Schemes</div>
+            </div>
+            <div class="loan-cat-card" data-cat="silver_loan" onclick="selectLoanCategory('silver_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
+              <div style="font-size:13px;font-weight:500;">Silver Loan</div>
+              <div style="font-size:11px;color:#888;">45% of weight value</div>
+            </div>
+            <div class="loan-cat-card" data-cat="home_loan" onclick="selectLoanCategory('home_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
+              <div style="font-size:13px;font-weight:500;">Home Loan</div>
+              <div style="font-size:11px;color:#888;">₹2L - ₹20L · CIBIL based</div>
+            </div>
+            <div class="loan-cat-card" data-cat="shiksha_loan" onclick="selectLoanCategory('shiksha_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
+              <div style="font-size:13px;font-weight:500;">Saathi Shiksha Loan</div>
+              <div style="font-size:11px;color:#888;">₹1L - ₹10L · ROI 15%</div>
+            </div>
+            <div class="loan-cat-card" data-cat="group_loan" onclick="selectLoanCategory('group_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
+              <div style="font-size:13px;font-weight:500;">Group Loan</div>
+              <div style="font-size:11px;color:#888;">Min 7 members · ₹10K-1L each</div>
+            </div>
+            <div class="loan-cat-card" data-cat="fd_loan" onclick="selectLoanCategory('fd_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
+              <div style="font-size:13px;font-weight:500;">Loan Against FD</div>
+              <div style="font-size:11px;color:#888;">70% of deposit · ROI 12%</div>
+            </div>
+            <div class="loan-cat-card" data-cat="shaadi_loan" onclick="selectLoanCategory('shaadi_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
+              <div style="font-size:13px;font-weight:500;">Sukanya Shaadi Loan</div>
+              <div style="font-size:11px;color:#888;">₹50,000 - ₹3L</div>
             </div>
           </div>
+        </div>
+
+        <!-- DYNAMIC LOAN FORM (changes based on category) -->
+        <div class="card" id="loan-form-card" style="display:none;">
+          <div class="card-title" id="loan-form-title">Loan Details</div>
+          <div class="three-col">
+            <div class="form-grp"><label>Member Account No. *</label><input type="text" id="ln-accno" placeholder="ASA-001"></div>
+            <div class="form-grp"><label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()"></div>
+            <div class="form-grp" id="ln-extra-field-1"></div>
+          </div>
+          <div class="three-col" id="ln-extra-row-2"></div>
           <div class="form-grp"><label>Guarantor Name</label><input type="text" id="ln-guarantor"></div>
-          <div class="success-msg" id="loan-preview">Daily Collection: ₹500 for 100 days. Interest FREE. Penalty ₹10/day on missed collection.</div>
-          <div class="btn-row"><button class="btn btn-orange" onclick="createLoan()">Loan Approve Karo</button></div>
+          <div class="three-col">
+            <div class="form-grp"><label>Guarantor Mobile</label><input type="text" id="ln-guarantor-mobile"></div>
+            <div class="form-grp"><label>Guarantor Aadhar</label><input type="text" id="ln-guarantor-aadhar"></div>
+            <div class="form-grp"></div>
+          </div>
+          <div class="form-grp" style="margin-top:6px;">
+            <label><input type="checkbox" id="ln-health-insurance"> Health Insurance opt-in (mandatory pitch, customer can decline)</label>
+          </div>
+          <div id="loan-preview" class="success-msg">Amount aur details bharo, calculation yahan dikhega.</div>
+          <div class="btn-row">
+            <button class="btn" onclick="closeLoanForm()">← Category Badlo</button>
+            <button class="btn btn-orange" onclick="submitLoan()">Loan Submit Karo (Appraisal ke liye)</button>
+          </div>
           <div id="loan-result"></div>
         </div>
       </div>
@@ -452,6 +504,13 @@ td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
           <div class="card-title">All Loans</div>
           <div id="loan-table" class="loading">Loading...</div>
           <div id="loan-pagination" style="display:flex;gap:8px;justify-content:center;margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-approvals">
+        <div class="card">
+          <div class="card-title">Loans Pending Approval</div>
+          <div id="approval-table" class="loading">Loading...</div>
         </div>
       </div>
 
@@ -511,7 +570,7 @@ function doLogout() {
 // ============================================================
 // NAVIGATION
 // ============================================================
-const pageTitles = { dash: 'Dashboard', acc: 'Account Opening', acclist: 'Member List', fd: 'Fixed Deposit', rd: 'Recurring Deposit', td: 'Term Deposit', loan: 'New Loan', coll: 'Daily Collection', loanlist: 'All Loans' };
+const pageTitles = { dash: 'Dashboard', acc: 'Account Opening', acclist: 'Member List', fd: 'Fixed Deposit', rd: 'Recurring Deposit', td: 'Term Deposit', loan: 'New Loan', coll: 'Daily Collection', loanlist: 'All Loans', approvals: 'Pending Approvals' };
 
 function goPage(id, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -527,6 +586,7 @@ function goPage(id, el) {
   if (id === 'acclist') loadMembers();
   if (id === 'coll') loadCollections();
   if (id === 'loanlist') loadLoans();
+  if (id === 'approvals') loadApprovals();
 }
 
 function fmt(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
@@ -922,51 +982,223 @@ async function createTD() {
 }
 
 // ============================================================
-// 100-DAY LOANS
+// MULTI-CATEGORY LOAN SYSTEM
 // ============================================================
-function updateLoanPreview() {
-  const amt = parseInt(document.getElementById('ln-amount').value);
-  document.getElementById('loan-preview').textContent = `Daily Collection: ${fmt(amt / 100)} for 100 days. Interest FREE. Penalty ₹10/day on missed collection.`;
+let selectedLoanCategory = null;
+let cachedSchemes = {}; // category -> array of schemes
+
+const categoryLabels = {
+  small_business: 'Chota Business Loan', big_business: 'Bada Business Loan',
+  gold_loan: 'Gold Loan', silver_loan: 'Silver Loan', home_loan: 'Home Loan',
+  shiksha_loan: 'Saathi Shiksha Loan', group_loan: 'Group Loan',
+  fd_loan: 'Loan Against FD', shaadi_loan: 'Sukanya Shaadi Loan'
+};
+
+async function getSchemes(category) {
+  if (cachedSchemes[category]) return cachedSchemes[category];
+  const { data } = await db.from('loan_schemes').select('*').eq('category', category).order('display_order');
+  cachedSchemes[category] = data || [];
+  return cachedSchemes[category];
 }
 
-async function createLoan() {
+function selectLoanCategory(cat) {
+  selectedLoanCategory = cat;
+  document.querySelectorAll('.loan-cat-card').forEach(c => {
+    c.style.borderColor = c.dataset.cat === cat ? '#e65c00' : '#eee';
+    c.style.background = c.dataset.cat === cat ? '#FFF0E6' : '#fff';
+  });
+  document.getElementById('loan-form-card').style.display = 'block';
+  document.getElementById('loan-form-title').textContent = categoryLabels[cat] + ' - Application';
+
+  const extra1 = document.getElementById('ln-extra-field-1');
+  const extraRow2 = document.getElementById('ln-extra-row-2');
+  extra1.innerHTML = ''; extraRow2.innerHTML = '';
+
+  // Category-specific extra fields
+  if (cat === 'gold_loan' || cat === 'silver_loan') {
+    extra1.innerHTML = `<label>Item Weight (grams) *</label><input type="number" id="ln-weight" oninput="calcLoanPreview()">`;
+    extraRow2.innerHTML = `<div class="form-grp"><label>Purity (e.g. 22K, 916)</label><input type="text" id="ln-purity"></div>
+      <div class="form-grp"><label>Item Description</label><input type="text" id="ln-itemdesc"></div>
+      <div class="form-grp"></div>`;
+  } else if (cat === 'home_loan') {
+    extra1.innerHTML = `<label>CIBIL Score *</label><input type="number" id="ln-cibil" min="300" max="900" oninput="calcLoanPreview()">`;
+    extraRow2.innerHTML = `<div class="form-grp"><label>Property Value (₹)</label><input type="number" id="ln-propvalue" oninput="calcLoanPreview()"></div>
+      <div class="form-grp"><label>Property Address</label><input type="text" id="ln-propaddress"></div>
+      <div class="form-grp"><label>Tenure</label><select id="ln-tenure-yrs"><option value="5">5 Years</option><option value="7">7 Years</option></select></div>`;
+  } else if (cat === 'group_loan') {
+    extra1.innerHTML = `<label>Group Name *</label><input type="text" id="ln-groupname">`;
+    extraRow2.innerHTML = `<div class="form-grp"><label>Number of Members (min 7) *</label><input type="number" id="ln-groupcount" min="7" value="7"></div>
+      <div class="form-grp"></div><div class="form-grp"></div>`;
+  } else if (cat === 'fd_loan') {
+    extra1.innerHTML = `<label>Linked FD Number *</label><input type="text" id="ln-fdno" placeholder="FD-1234" oninput="calcLoanPreview()">`;
+  } else if (cat === 'shaadi_loan') {
+    extra1.innerHTML = `<label>Security Document Type *</label><select id="ln-securitytype"><option value="home_paper">Home Paper</option><option value="shop_paper">Shop Paper</option></select>`;
+  }
+
+  document.getElementById('ln-amount').value = '';
+  document.getElementById('loan-preview').textContent = 'Amount aur details bharo, calculation yahan dikhega.';
+  document.getElementById('loan-result').innerHTML = '';
+  document.getElementById('loan-form-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+function closeLoanForm() {
+  selectedLoanCategory = null;
+  document.getElementById('loan-form-card').style.display = 'none';
+  document.querySelectorAll('.loan-cat-card').forEach(c => { c.style.borderColor = '#eee'; c.style.background = '#fff'; });
+}
+
+async function calcLoanPreview() {
+  const amount = parseFloat(document.getElementById('ln-amount').value) || 0;
+  const previewEl = document.getElementById('loan-preview');
+  if (!amount || !selectedLoanCategory) { previewEl.textContent = 'Amount aur details bharo.'; return; }
+
+  let html = '';
+
+  if (selectedLoanCategory === 'small_business') {
+    const pf = amount * 0.015;
+    html = `Daily Collection: <b>${fmt(amount/100)}</b> for 100 days &middot; Interest FREE &middot; PF: ${fmt(pf)} (1.5% flat) &middot; Miss penalty: ₹50/missed EMI (multiplies per miss)`;
+  }
+  else if (selectedLoanCategory === 'big_business') {
+    const schemes = await getSchemes('big_business');
+    const s = schemes[0];
+    const pf = amount * (s.pf_percent/100);
+    html = `Tenure: 5 years &middot; ROI: <b>${s.base_annual_rate_min}% - ${s.base_annual_rate_max}%</b> (depends on profile) &middot; PF: ${fmt(pf)} (2% of disbursement) &middot; Miss penalty: +1.2% added to interest rate`;
+  }
+  else if (selectedLoanCategory === 'gold_loan' || selectedLoanCategory === 'silver_loan') {
+    const schemes = await getSchemes(selectedLoanCategory);
+    let scheme;
+    if (selectedLoanCategory === 'gold_loan') {
+      scheme = schemes.find(s => amount >= s.amount_min && amount <= s.amount_max);
+    } else {
+      scheme = schemes[0];
+    }
+    if (scheme) {
+      const pf = amount * (scheme.pf_percent/100);
+      if (selectedLoanCategory === 'gold_loan') {
+        html = `Scheme: <b>${scheme.scheme_name}</b> &middot; Monthly Rate: <b>${scheme.base_monthly_rate}%</b> &middot; Grace Period: ${scheme.grace_period_days} days &middot; Late (Month 1): ${scheme.late_rate_month1}% &middot; Late (Month 3+): ${scheme.late_rate_month3}% &middot; <span style="color:#A32D2D">Auction after ${scheme.auction_after_months} months unpaid</span> &middot; PF: ${fmt(pf)}`;
+      } else {
+        const weight = parseFloat(document.getElementById('ln-weight')?.value) || 0;
+        const maxLoan = weight * 4500; // approx 45% of weight value placeholder (per gram rate assumption)
+        html = `Monthly Rate: <b>${scheme.base_monthly_rate}%</b> &middot; Annual: ${scheme.base_annual_rate_min}% &middot; Tenure: ${scheme.tenure_days} days &middot; PF: ${fmt(pf)} (2.5% flat) &middot; Max eligible (45% of weight, approx): ${fmt(maxLoan)}`;
+      }
+    }
+  }
+  else if (selectedLoanCategory === 'home_loan') {
+    const schemes = await getSchemes('home_loan');
+    const scheme = amount <= 1000000 ? schemes[0] : schemes[1];
+    const pf = amount * (scheme.pf_percent/100);
+    const tenure = document.getElementById('ln-tenure-yrs')?.value || 5;
+    const cibil = document.getElementById('ln-cibil')?.value;
+    html = `ROI Range: <b>${scheme.base_annual_rate_min}% - ${scheme.base_annual_rate_max}%</b> (final rate depends on CIBIL) &middot; Tenure: ${tenure} years &middot; PF: ${fmt(pf)} (2.5% flat, login) &middot; Disbursed: up to 85% of property value (for 10L+) &middot; Stamp/document charges paid by customer`;
+    if (amount > 700000) html += ` &middot; <span style="color:#854F0B">⚠ Exceeds BM approval limit (₹7L) — Head Office approval required</span>`;
+  }
+  else if (selectedLoanCategory === 'shiksha_loan') {
+    const schemes = await getSchemes('shiksha_loan');
+    const s = schemes[0];
+    html = `ROI: <b>${s.base_annual_rate_min}%</b> &middot; EMI paid monthly (auto-calculated) &middot; Miss penalty: rate increases to <b>17%</b>`;
+  }
+  else if (selectedLoanCategory === 'group_loan') {
+    const schemes = await getSchemes('group_loan');
+    const s = schemes[0];
+    const pf = amount * (s.pf_percent/100);
+    const groupCount = document.getElementById('ln-groupcount')?.value || 7;
+    html = `ROI: <b>${s.base_annual_rate_min}% - ${s.base_annual_rate_max}%</b> &middot; Tenure: 365 days &middot; PF: ${fmt(pf)} (3% flat on disbursed amount) &middot; Group size: ${groupCount} members &middot; <span style="color:#A32D2D">⚠ Any member miss = penalty (+1.5%) applies to WHOLE group</span>`;
+  }
+  else if (selectedLoanCategory === 'fd_loan') {
+    const fdNo = document.getElementById('ln-fdno')?.value;
+    html = `Loan eligible: <b>70% of FD deposit amount</b> &middot; ROI: <b>12%</b> &middot; Linked FD: ${fdNo || '(enter FD number)'}`;
+  }
+  else if (selectedLoanCategory === 'shaadi_loan') {
+    html = `Amount Range: ₹50,000 - ₹3,00,000 &middot; Against: Home/Shop paper security &middot; Guarantor required`;
+  }
+
+  previewEl.innerHTML = html;
+}
+
+async function submitLoan() {
   const accNo = document.getElementById('ln-accno').value;
   const member = await findMemberByAccNo(accNo);
   if (!member) { document.getElementById('loan-result').innerHTML = '<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Account number nahi mila</div>'; return; }
 
-  const amount = parseInt(document.getElementById('ln-amount').value);
-  const dailyCollection = amount / 100;
-  const loanNo = 'LN-' + Math.floor(1000 + Math.random() * 9000);
+  const amount = parseFloat(document.getElementById('ln-amount').value) || 0;
+  if (!amount) { alert('Loan amount bharo'); return; }
 
-  const { data: loanData, error } = await db.from('loans').insert({
+  const loanNo = 'LN-' + Math.floor(1000 + Math.random() * 9000);
+  const requiresHO = amount > 700000; // BM approval limit
+  let dailyCollection = null, tenureDays = null, tenureYears = null, pfAmount = 0, interestRate = null;
+
+  if (selectedLoanCategory === 'small_business') {
+    dailyCollection = amount / 100; tenureDays = 100; pfAmount = amount * 0.015; interestRate = 0;
+  } else if (selectedLoanCategory === 'big_business') {
+    const schemes = await getSchemes('big_business'); pfAmount = amount * (schemes[0].pf_percent/100); tenureYears = 5; interestRate = schemes[0].base_annual_rate_min;
+  } else if (selectedLoanCategory === 'gold_loan') {
+    const schemes = await getSchemes('gold_loan');
+    const scheme = schemes.find(s => amount >= s.amount_min && amount <= s.amount_max);
+    if (scheme) { pfAmount = amount * (scheme.pf_percent/100); interestRate = scheme.base_monthly_rate; }
+  } else if (selectedLoanCategory === 'silver_loan') {
+    const schemes = await getSchemes('silver_loan'); pfAmount = amount * (schemes[0].pf_percent/100); tenureDays = schemes[0].tenure_days; interestRate = schemes[0].base_monthly_rate;
+  } else if (selectedLoanCategory === 'home_loan') {
+    const schemes = await getSchemes('home_loan');
+    const scheme = amount <= 1000000 ? schemes[0] : schemes[1];
+    pfAmount = amount * (scheme.pf_percent/100); tenureYears = parseInt(document.getElementById('ln-tenure-yrs')?.value || 5); interestRate = scheme.base_annual_rate_min;
+  } else if (selectedLoanCategory === 'shiksha_loan') {
+    const schemes = await getSchemes('shiksha_loan'); interestRate = schemes[0].base_annual_rate_min;
+  } else if (selectedLoanCategory === 'group_loan') {
+    const schemes = await getSchemes('group_loan'); pfAmount = amount * (schemes[0].pf_percent/100); tenureDays = 365; interestRate = schemes[0].base_annual_rate_min;
+  } else if (selectedLoanCategory === 'fd_loan') {
+    interestRate = 12;
+  } else if (selectedLoanCategory === 'shaadi_loan') {
+    interestRate = 0;
+  }
+
+  const payload = {
     loan_no: loanNo, member_id: member.id, branch_id: currentBranchId,
-    category: document.getElementById('ln-category').value,
-    loan_amount: amount, daily_collection: dailyCollection,
+    category: selectedLoanCategory, loan_amount: amount,
+    interest_rate: interestRate, tenure_days: tenureDays, tenure_years: tenureYears,
+    pf_amount: pfAmount,
+    item_weight_grams: parseFloat(document.getElementById('ln-weight')?.value) || null,
+    item_purity: document.getElementById('ln-purity')?.value || null,
+    item_description: document.getElementById('ln-itemdesc')?.value || null,
+    cibil_score: parseInt(document.getElementById('ln-cibil')?.value) || null,
+    property_value: parseFloat(document.getElementById('ln-propvalue')?.value) || null,
+    property_address: document.getElementById('ln-propaddress')?.value || null,
+    group_name: document.getElementById('ln-groupname')?.value || null,
+    group_member_count: parseInt(document.getElementById('ln-groupcount')?.value) || null,
+    security_document_type: document.getElementById('ln-securitytype')?.value || null,
     guarantor_name: document.getElementById('ln-guarantor').value,
+    guarantor_mobile: document.getElementById('ln-guarantor-mobile').value,
+    guarantor_aadhar: document.getElementById('ln-guarantor-aadhar').value,
+    health_insurance_opted: document.getElementById('ln-health-insurance').checked,
+    requires_head_office: requiresHO,
+    bm_approval_status: 'pending',
+    head_office_approval_status: requiresHO ? 'pending' : 'not_required',
     start_date: new Date().toISOString().split('T')[0],
-    approved_by: currentUser.id
-  }).select().single();
+    status: 'pending_bm',
+    appraised_by: currentUser.id
+  };
+
+  const { data: loanData, error } = await db.from('loans').insert(payload).select().single();
 
   if (error) {
     document.getElementById('loan-result').innerHTML = `<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Error: ${error.message}</div>`;
     return;
   }
 
-  // Generate 100 daily collection rows
-  const collections = [];
-  const startDate = new Date();
-  for (let day = 1; day <= 100; day++) {
-    const collDate = new Date(startDate);
-    collDate.setDate(collDate.getDate() + day - 1);
-    collections.push({
-      loan_id: loanData.id, day_number: day,
-      collection_date: collDate.toISOString().split('T')[0],
-      amount_due: dailyCollection
-    });
+  // For small_business (100-day loan), generate daily collection schedule immediately
+  if (selectedLoanCategory === 'small_business') {
+    const collections = [];
+    const startDate = new Date();
+    for (let day = 1; day <= 100; day++) {
+      const collDate = new Date(startDate);
+      collDate.setDate(collDate.getDate() + day - 1);
+      collections.push({ loan_id: loanData.id, day_number: day, collection_date: collDate.toISOString().split('T')[0], amount_due: dailyCollection });
+    }
+    await db.from('loan_collections').insert(collections);
   }
-  await db.from('loan_collections').insert(collections);
 
-  document.getElementById('loan-result').innerHTML = `<div class="success-msg">Loan approved! Loan No: <b>${loanNo}</b> | Daily: ${fmt(dailyCollection)}</div>`;
+  document.getElementById('loan-result').innerHTML = `<div class="success-msg">✅ Loan submitted! Loan No: <b>${loanNo}</b> &middot; Status: Pending BM Approval${requiresHO ? ' → Head Office Approval bhi chahiye hoga (amount > ₹7L)' : ''}</div>`;
+  document.getElementById('ln-amount').value = '';
+  document.getElementById('ln-accno').value = '';
 }
 
 let currentLoanPage = 0;
@@ -980,11 +1212,12 @@ async function loadLoans(page = 0) {
   if (!isAdmin) q = q.eq('branch_id', currentBranchId);
   const { data, count } = await q;
 
-  let html = '<table><thead><tr><th>Loan No</th><th>Member</th><th>Category</th><th>Amount</th><th>Daily</th><th>Days Done</th><th>Penalty</th><th>Status</th></tr></thead><tbody>';
+  let html = '<table><thead><tr><th>Loan No</th><th>Member</th><th>Category</th><th>Amount</th><th>Rate</th><th>BM Status</th><th>HO Status</th><th>Status</th></tr></thead><tbody>';
   if (data && data.length) {
     data.forEach(l => {
       const name = l.members ? `${l.members.first_name} ${l.members.last_name || ''}` : '-';
-      html += `<tr><td>${l.loan_no}</td><td>${name}</td><td>${l.category}</td><td>${fmt(l.loan_amount)}</td><td>${fmt(l.daily_collection)}</td><td>${l.days_completed}/100</td><td>${fmt(l.total_penalty)}</td><td><span class="badge ${l.status === 'active' ? 'bg' : l.status === 'overdue' ? 'br' : 'ba'}">${l.status}</span></td></tr>`;
+      const catLabel = categoryLabels[l.category] || l.category;
+      html += `<tr><td>${l.loan_no}</td><td>${name}</td><td>${catLabel}</td><td>${fmt(l.loan_amount)}</td><td>${l.interest_rate != null ? l.interest_rate + '%' : '-'}</td><td><span class="badge ${l.bm_approval_status === 'approved' ? 'bg' : l.bm_approval_status === 'rejected' ? 'br' : 'ba'}">${l.bm_approval_status}</span></td><td><span class="badge ${l.head_office_approval_status === 'approved' ? 'bg' : l.head_office_approval_status === 'rejected' ? 'br' : l.head_office_approval_status === 'not_required' ? 'bb' : 'ba'}">${l.head_office_approval_status}</span></td><td><span class="badge ${l.status === 'active' ? 'bg' : l.status === 'overdue' ? 'br' : 'ba'}">${l.status}</span></td></tr>`;
     });
   } else {
     html += '<tr><td colspan="8">Koi loan nahi mila</td></tr>';
@@ -997,6 +1230,82 @@ async function loadLoans(page = 0) {
   pagHtml += `<span style="padding:8px 12px;font-size:12px;color:#666">Page ${page + 1} of ${totalPages || 1} (${count || 0} total loans)</span>`;
   pagHtml += `<button class="btn" onclick="loadLoans(${page + 1})" ${page + 1 >= totalPages ? 'disabled' : ''}>Next</button>`;
   document.getElementById('loan-pagination').innerHTML = pagHtml;
+}
+
+// ============================================================
+// APPROVAL WORKFLOW: Branch Manager + Head Office
+// ============================================================
+async function loadApprovals() {
+  const isAdmin = currentUser.role === 'super_admin';
+  const isBM = currentUser.role === 'branch_manager';
+  const tableEl = document.getElementById('approval-table');
+
+  if (!isAdmin && !isBM) {
+    tableEl.innerHTML = '<p style="color:#888;">Sirf Branch Manager aur Head Office hi approvals dekh sakte hain.</p>';
+    return;
+  }
+
+  let q = db.from('loans').select('*, members(account_no, first_name, last_name)').order('created_at', { ascending: false });
+  if (isAdmin) {
+    q = q.eq('head_office_approval_status', 'pending');
+  } else {
+    q = q.eq('branch_id', currentBranchId).eq('bm_approval_status', 'pending');
+  }
+  const { data } = await q;
+
+  let html = `<p style="font-size:12px;color:#888;margin-bottom:10px;">${isAdmin ? 'Head Office: Loans jo BM se approved hain aur 7 Lakh se zyada hain' : 'Branch Manager: Naye loans jo appraisal ke baad approval ke liye aaye hain'}</p>`;
+  html += '<table><thead><tr><th>Loan No</th><th>Member</th><th>Category</th><th>Amount</th><th>Guarantor</th><th>Action</th></tr></thead><tbody>';
+  if (data && data.length) {
+    data.forEach(l => {
+      const name = l.members ? `${l.members.first_name} ${l.members.last_name || ''}` : '-';
+      const catLabel = categoryLabels[l.category] || l.category;
+      html += `<tr id="appr-row-${l.id}"><td>${l.loan_no}</td><td>${name}</td><td>${catLabel}</td><td>${fmt(l.loan_amount)}</td><td>${l.guarantor_name || '-'}</td>
+        <td><button class="btn btn-primary" style="padding:4px 10px;font-size:11px;" onclick="approveLoan('${l.id}', ${isAdmin})">Approve</button>
+        <button class="btn" style="padding:4px 10px;font-size:11px;background:#FCEBEB;color:#A32D2D;" onclick="rejectLoan('${l.id}', ${isAdmin})">Reject</button></td></tr>`;
+    });
+  } else {
+    html += '<tr><td colspan="6">Koi pending approval nahi hai</td></tr>';
+  }
+  html += '</tbody></table>';
+  tableEl.innerHTML = html;
+}
+
+async function approveLoan(loanId, isHeadOffice) {
+  if (isHeadOffice) {
+    await db.from('loans').update({
+      head_office_approval_status: 'approved', head_office_approved_by: currentUser.id,
+      head_office_approval_date: new Date().toISOString(), status: 'active'
+    }).eq('id', loanId);
+  } else {
+    const { data: loan } = await db.from('loans').select('requires_head_office, loan_amount, category').eq('id', loanId).single();
+    const updates = {
+      bm_approval_status: 'approved', bm_approved_by: currentUser.id, bm_approval_date: new Date().toISOString()
+    };
+    if (!loan.requires_head_office) {
+      updates.status = 'active';
+      // For small_business (100-day), generate collection schedule on BM approval
+      if (loan.category === 'small_business') {
+        const dailyCollection = loan.loan_amount / 100;
+        const collections = [];
+        const startDate = new Date();
+        for (let day = 1; day <= 100; day++) {
+          const collDate = new Date(startDate); collDate.setDate(collDate.getDate() + day - 1);
+          collections.push({ loan_id: loanId, day_number: day, collection_date: collDate.toISOString().split('T')[0], amount_due: dailyCollection });
+        }
+        await db.from('loan_collections').insert(collections);
+      }
+    } else {
+      updates.status = 'pending_ho';
+    }
+    await db.from('loans').update(updates).eq('id', loanId);
+  }
+  document.getElementById('appr-row-' + loanId).innerHTML = '<td colspan="6" style="color:#0F6E56;">✓ Approved</td>';
+}
+
+async function rejectLoan(loanId, isHeadOffice) {
+  const field = isHeadOffice ? 'head_office_approval_status' : 'bm_approval_status';
+  await db.from('loans').update({ [field]: 'rejected', status: 'rejected' }).eq('id', loanId);
+  document.getElementById('appr-row-' + loanId).innerHTML = '<td colspan="6" style="color:#A32D2D;">✗ Rejected</td>';
 }
 
 async function loadCollections() {
