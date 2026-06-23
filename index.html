@@ -470,15 +470,17 @@ td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
           <div class="card-title" id="loan-form-title">Loan Details</div>
           <div class="three-col">
             <div class="form-grp"><label>Member Account No. *</label><input type="text" id="ln-accno" placeholder="ASA-001"></div>
-            <div class="form-grp"><label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()"></div>
+            <div class="form-grp" id="ln-amount-wrapper"><label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()"></div>
             <div class="form-grp" id="ln-extra-field-1"></div>
           </div>
           <div class="three-col" id="ln-extra-row-2"></div>
-          <div class="form-grp"><label>Guarantor Name</label><input type="text" id="ln-guarantor"></div>
-          <div class="three-col">
-            <div class="form-grp"><label>Guarantor Mobile</label><input type="text" id="ln-guarantor-mobile"></div>
-            <div class="form-grp"><label>Guarantor Aadhar</label><input type="text" id="ln-guarantor-aadhar"></div>
-            <div class="form-grp"></div>
+          <div id="ln-guarantor-section">
+            <div class="form-grp"><label>Guarantor Name</label><input type="text" id="ln-guarantor"></div>
+            <div class="three-col">
+              <div class="form-grp"><label>Guarantor Mobile</label><input type="text" id="ln-guarantor-mobile"></div>
+              <div class="form-grp"><label>Guarantor Aadhar</label><input type="text" id="ln-guarantor-aadhar"></div>
+              <div class="form-grp"></div>
+            </div>
           </div>
           <div class="form-grp" style="margin-top:6px;">
             <label><input type="checkbox" id="ln-health-insurance"> Health Insurance opt-in (mandatory pitch, customer can decline)</label>
@@ -986,6 +988,37 @@ async function createTD() {
 // ============================================================
 let selectedLoanCategory = null;
 let cachedSchemes = {}; // category -> array of schemes
+let cachedMarketRate = { gold_loan: null, silver_loan: null, fetchedAt: null };
+
+// Total deduction in grams per carat (0.5gm dust included) - confirmed values
+const caratDeductionTable = { 18: 0.9, 20: 1.9, 21: 2.4, 22: 2.9, 24: 0.5 };
+const SILVER_DUST_DEDUCTION = 0.5; // silver: only dust, no carat concept
+
+// Fetch live gold (XAU) / silver (XAG) rate in INR per gram
+async function fetchMarketRate(category) {
+  const rateInput = document.getElementById('ln-market-rate');
+  if (rateInput) rateInput.value = 'Fetching live rate...';
+  try {
+    const symbol = category === 'gold_loan' ? 'XAU' : 'XAG';
+    const [metalRes, fxRes] = await Promise.all([
+      fetch(`https://api.gold-api.com/price/${symbol}`).then(r => r.json()),
+      fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json())
+    ]);
+    const usdPerOz = metalRes.price;
+    const usdToInr = fxRes.rates.INR;
+    const TROY_OZ_TO_GRAM = 31.1035;
+    const inrPerGram24k = (usdPerOz * usdToInr) / TROY_OZ_TO_GRAM;
+    // Adjust by ₹4000/gram less than pure market rate (society's buy rate, per your instruction)
+    const adjustedRate = inrPerGram24k - 4000 > 0 ? inrPerGram24k - 4000 : inrPerGram24k;
+    cachedMarketRate[category] = adjustedRate;
+    cachedMarketRate.fetchedAt = new Date();
+    if (rateInput) rateInput.value = fmt(adjustedRate) + '/gram';
+    calcLoanPreview();
+  } catch (e) {
+    if (rateInput) rateInput.value = 'Rate fetch failed - retry';
+    console.error('Market rate fetch error:', e);
+  }
+}
 
 const categoryLabels = {
   small_business: 'Chota Business Loan', big_business: 'Bada Business Loan',
@@ -1012,30 +1045,59 @@ function selectLoanCategory(cat) {
 
   const extra1 = document.getElementById('ln-extra-field-1');
   const extraRow2 = document.getElementById('ln-extra-row-2');
+  const amountWrapper = document.getElementById('ln-amount-wrapper');
+  const guarantorSection = document.getElementById('ln-guarantor-section');
   extra1.innerHTML = ''; extraRow2.innerHTML = '';
 
-  // Category-specific extra fields
+  // Gold/Silver loans: no guarantor, amount is auto-calculated (read-only)
+  guarantorSection.style.display = (cat === 'gold_loan' || cat === 'silver_loan') ? 'none' : 'block';
+
   if (cat === 'gold_loan' || cat === 'silver_loan') {
-    extra1.innerHTML = `<label>Item Weight (grams) *</label><input type="number" id="ln-weight" oninput="calcLoanPreview()">`;
-    extraRow2.innerHTML = `<div class="form-grp"><label>Purity (e.g. 22K, 916)</label><input type="text" id="ln-purity"></div>
-      <div class="form-grp"><label>Item Description</label><input type="text" id="ln-itemdesc"></div>
-      <div class="form-grp"></div>`;
+    const isGold = cat === 'gold_loan';
+    amountWrapper.innerHTML = `<label>Loan Amount (₹) — Auto Calculated</label><input type="text" id="ln-amount" readonly style="background:#f5f5f5;font-weight:600;">`;
+
+    const jewelleryOptions = isGold
+      ? ['Necklace','Ring','Bangle','Chain','Earring','Bracelet','Coin','Other']
+      : ['Anklet (Payal)','Bangle','Chain','Coin','Utensil','Bar','Other'];
+
+    extra1.innerHTML = `<label>Jewellery Type *</label><select id="ln-jewellery-type" onchange="calcLoanPreview()">
+      ${jewelleryOptions.map(j => `<option value="${j}">${j}</option>`).join('')}
+    </select>`;
+
+    let caratDropdown = '';
+    if (isGold) {
+      caratDropdown = `<div class="form-grp"><label>Carat *</label><select id="ln-carat" onchange="calcLoanPreview()">
+        <option value="24">24 KT</option><option value="22" selected>22 KT</option><option value="21">21 KT</option><option value="20">20 KT</option><option value="18">18 KT</option>
+      </select></div>`;
+    }
+
+    extraRow2.innerHTML = `
+      <div class="form-grp"><label>Gross Weight (grams) *</label><input type="number" id="ln-weight" step="0.01" oninput="calcLoanPreview()"></div>
+      ${caratDropdown}
+      <div class="form-grp" id="ln-rate-display"><label>Live Market Rate (₹/gram)</label><input type="text" id="ln-market-rate" readonly style="background:#f5f5f5;"></div>
+    `;
+    fetchMarketRate(cat);
   } else if (cat === 'home_loan') {
+    amountWrapper.innerHTML = `<label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
     extra1.innerHTML = `<label>CIBIL Score *</label><input type="number" id="ln-cibil" min="300" max="900" oninput="calcLoanPreview()">`;
     extraRow2.innerHTML = `<div class="form-grp"><label>Property Value (₹)</label><input type="number" id="ln-propvalue" oninput="calcLoanPreview()"></div>
       <div class="form-grp"><label>Property Address</label><input type="text" id="ln-propaddress"></div>
       <div class="form-grp"><label>Tenure</label><select id="ln-tenure-yrs"><option value="5">5 Years</option><option value="7">7 Years</option></select></div>`;
   } else if (cat === 'group_loan') {
+    amountWrapper.innerHTML = `<label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
     extra1.innerHTML = `<label>Group Name *</label><input type="text" id="ln-groupname">`;
     extraRow2.innerHTML = `<div class="form-grp"><label>Number of Members (min 7) *</label><input type="number" id="ln-groupcount" min="7" value="7"></div>
       <div class="form-grp"></div><div class="form-grp"></div>`;
   } else if (cat === 'fd_loan') {
+    amountWrapper.innerHTML = `<label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
     extra1.innerHTML = `<label>Linked FD Number *</label><input type="text" id="ln-fdno" placeholder="FD-1234" oninput="calcLoanPreview()">`;
   } else if (cat === 'shaadi_loan') {
+    amountWrapper.innerHTML = `<label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
     extra1.innerHTML = `<label>Security Document Type *</label><select id="ln-securitytype"><option value="home_paper">Home Paper</option><option value="shop_paper">Shop Paper</option></select>`;
+  } else {
+    amountWrapper.innerHTML = `<label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
   }
 
-  document.getElementById('ln-amount').value = '';
   document.getElementById('loan-preview').textContent = 'Amount aur details bharo, calculation yahan dikhega.';
   document.getElementById('loan-result').innerHTML = '';
   document.getElementById('loan-form-card').scrollIntoView({ behavior: 'smooth' });
@@ -1048,6 +1110,12 @@ function closeLoanForm() {
 }
 
 async function calcLoanPreview() {
+  // Gold/Silver loans: amount is DERIVED from weight+carat+rate, not user-entered
+  if (selectedLoanCategory === 'gold_loan' || selectedLoanCategory === 'silver_loan') {
+    await calcGoldSilverPreview();
+    return;
+  }
+
   const amount = parseFloat(document.getElementById('ln-amount').value) || 0;
   const previewEl = document.getElementById('loan-preview');
   if (!amount || !selectedLoanCategory) { previewEl.textContent = 'Amount aur details bharo.'; return; }
@@ -1065,23 +1133,7 @@ async function calcLoanPreview() {
     html = `Tenure: 5 years &middot; ROI: <b>${s.base_annual_rate_min}% - ${s.base_annual_rate_max}%</b> (depends on profile) &middot; PF: ${fmt(pf)} (2% of disbursement) &middot; Miss penalty: +1.2% added to interest rate`;
   }
   else if (selectedLoanCategory === 'gold_loan' || selectedLoanCategory === 'silver_loan') {
-    const schemes = await getSchemes(selectedLoanCategory);
-    let scheme;
-    if (selectedLoanCategory === 'gold_loan') {
-      scheme = schemes.find(s => amount >= s.amount_min && amount <= s.amount_max);
-    } else {
-      scheme = schemes[0];
-    }
-    if (scheme) {
-      const pf = amount * (scheme.pf_percent/100);
-      if (selectedLoanCategory === 'gold_loan') {
-        html = `Scheme: <b>${scheme.scheme_name}</b> &middot; Monthly Rate: <b>${scheme.base_monthly_rate}%</b> &middot; Grace Period: ${scheme.grace_period_days} days &middot; Late (Month 1): ${scheme.late_rate_month1}% &middot; Late (Month 3+): ${scheme.late_rate_month3}% &middot; <span style="color:#A32D2D">Auction after ${scheme.auction_after_months} months unpaid</span> &middot; PF: ${fmt(pf)}`;
-      } else {
-        const weight = parseFloat(document.getElementById('ln-weight')?.value) || 0;
-        const maxLoan = weight * 4500; // approx 45% of weight value placeholder (per gram rate assumption)
-        html = `Monthly Rate: <b>${scheme.base_monthly_rate}%</b> &middot; Annual: ${scheme.base_annual_rate_min}% &middot; Tenure: ${scheme.tenure_days} days &middot; PF: ${fmt(pf)} (2.5% flat) &middot; Max eligible (45% of weight, approx): ${fmt(maxLoan)}`;
-      }
-    }
+    // handled by calcGoldSilverPreview(), unreachable here
   }
   else if (selectedLoanCategory === 'home_loan') {
     const schemes = await getSchemes('home_loan');
@@ -1113,6 +1165,60 @@ async function calcLoanPreview() {
   }
 
   previewEl.innerHTML = html;
+}
+
+// ============================================================
+// GOLD/SILVER LOAN: Auto-calculation engine
+// Net Weight = Gross Weight - Total Deduction (carat-based for gold, fixed dust for silver)
+// Loan Amount = Net Weight x Live Market Rate (per gram, already adjusted -₹4000 from spot)
+// ============================================================
+async function calcGoldSilverPreview() {
+  const previewEl = document.getElementById('loan-preview');
+  const weight = parseFloat(document.getElementById('ln-weight')?.value) || 0;
+  const rate = cachedMarketRate[selectedLoanCategory];
+
+  if (!weight) {
+    previewEl.textContent = 'Gross weight bharo calculation dekhne ke liye.';
+    document.getElementById('ln-amount').value = '';
+    return;
+  }
+  if (!rate) {
+    previewEl.textContent = 'Live market rate load ho raha hai, thoda wait karo...';
+    return;
+  }
+
+  let totalDeduction, deductionNote;
+  if (selectedLoanCategory === 'gold_loan') {
+    const carat = parseInt(document.getElementById('ln-carat')?.value) || 22;
+    totalDeduction = caratDeductionTable[carat];
+    deductionNote = `${carat}KT carat deduction (incl. 0.5gm dust): ${totalDeduction}gm`;
+  } else {
+    totalDeduction = SILVER_DUST_DEDUCTION;
+    deductionNote = `Dust deduction (fixed): ${totalDeduction}gm`;
+  }
+
+  const netWeight = Math.max(0, weight - totalDeduction);
+  const loanAmount = netWeight * rate;
+
+  document.getElementById('ln-amount').value = Math.round(loanAmount);
+
+  const schemes = await getSchemes(selectedLoanCategory);
+  let extraInfo = '';
+  if (selectedLoanCategory === 'gold_loan') {
+    const scheme = schemes.find(s => loanAmount >= s.amount_min && loanAmount <= s.amount_max) || schemes[schemes.length - 1];
+    if (scheme) {
+      const pf = loanAmount * (scheme.pf_percent / 100);
+      extraInfo = `<br>Scheme: <b>${scheme.scheme_name}</b> &middot; Monthly Rate: <b>${scheme.base_monthly_rate}%</b> &middot; Grace: ${scheme.grace_period_days} days &middot; Late (M1): ${scheme.late_rate_month1}% &middot; Late (M3+): ${scheme.late_rate_month3}% &middot; <span style="color:#A32D2D">Auction after ${scheme.auction_after_months} months</span> &middot; PF: ${fmt(pf)}`;
+    }
+  } else {
+    const s = schemes[0];
+    if (s) {
+      const pf = loanAmount * (s.pf_percent / 100);
+      extraInfo = `<br>Monthly Rate: <b>${s.base_monthly_rate}%</b> &middot; Tenure: ${s.tenure_days} days &middot; PF: ${fmt(pf)} (2.5% flat)`;
+    }
+  }
+
+  previewEl.innerHTML = `Gross Weight: <b>${weight}gm</b> &middot; ${deductionNote} &middot; Net Weight: <b>${netWeight.toFixed(2)}gm</b> &middot; Rate: ${fmt(rate)}/gm &middot; <b>Loan Amount: ${fmt(loanAmount)}</b>${extraInfo}`;
 }
 
 async function submitLoan() {
@@ -1157,8 +1263,8 @@ async function submitLoan() {
     interest_rate: interestRate, tenure_days: tenureDays, tenure_years: tenureYears,
     pf_amount: pfAmount,
     item_weight_grams: parseFloat(document.getElementById('ln-weight')?.value) || null,
-    item_purity: document.getElementById('ln-purity')?.value || null,
-    item_description: document.getElementById('ln-itemdesc')?.value || null,
+    item_purity: document.getElementById('ln-carat')?.value ? document.getElementById('ln-carat').value + 'KT' : null,
+    item_description: document.getElementById('ln-jewellery-type')?.value || null,
     cibil_score: parseInt(document.getElementById('ln-cibil')?.value) || null,
     property_value: parseFloat(document.getElementById('ln-propvalue')?.value) || null,
     property_address: document.getElementById('ln-propaddress')?.value || null,
