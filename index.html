@@ -462,6 +462,14 @@ td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
               <div style="font-size:13px;font-weight:500;">Sukanya Shaadi Loan</div>
               <div style="font-size:11px;color:#888;">₹50,000 - ₹3L</div>
             </div>
+            <div class="loan-cat-card" data-cat="consumer_loan" onclick="selectLoanCategory('consumer_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
+              <div style="font-size:13px;font-weight:500;">Consumer Loan</div>
+              <div style="font-size:11px;color:#888;">₹5K - ₹5L · 70% financed</div>
+            </div>
+            <div class="loan-cat-card" data-cat="medical_emergency_loan" onclick="selectLoanCategory('medical_emergency_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
+              <div style="font-size:13px;font-weight:500;">Medical Emergency Loan</div>
+              <div style="font-size:11px;color:#888;">Up to ₹5L · 0.90%/month</div>
+            </div>
           </div>
         </div>
 
@@ -469,11 +477,35 @@ td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
         <div class="card" id="loan-form-card" style="display:none;">
           <div class="card-title" id="loan-form-title">Loan Details</div>
           <div class="three-col">
-            <div class="form-grp"><label>Member Account No. *</label><input type="text" id="ln-accno" placeholder="ASA-001"></div>
+            <div class="form-grp">
+              <label>Member Account No. *</label>
+              <div style="display:flex;gap:6px;">
+                <input type="text" id="ln-accno" placeholder="ASA-001" oninput="debounceFetchMember()" style="flex:1;">
+              </div>
+            </div>
             <div class="form-grp" id="ln-amount-wrapper"><label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()"></div>
             <div class="form-grp" id="ln-extra-field-1"></div>
           </div>
+
+          <!-- MEMBER INFO PANEL (auto-fetched on account no entry) -->
+          <div id="ln-member-info" style="display:none;background:var(--color-background-secondary,#f5f5f5);border-radius:8px;padding:10px 14px;margin-bottom:12px;">
+            <div style="display:flex;gap:12px;align-items:center;">
+              <div id="ln-member-photo" style="width:50px;height:50px;border-radius:6px;background:#ddd;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:10px;color:#888;">No Photo</div>
+              <div style="flex:1;font-size:12px;">
+                <div style="font-weight:600;font-size:13px;" id="ln-member-name">-</div>
+                <div style="color:#666;">Mobile: <span id="ln-member-mobile">-</span> &middot; KYC: <span id="ln-member-kyc">-</span> &middot; Balance: <span id="ln-member-balance">-</span></div>
+              </div>
+            </div>
+          </div>
+
           <div class="three-col" id="ln-extra-row-2"></div>
+
+          <!-- ITEM PHOTO UPLOAD (gold/silver only) -->
+          <div id="ln-item-photo-section" style="display:none;">
+            <div class="form-grp"><label>Item Photo (jewellery/item ki photo) *</label><input type="file" id="ln-item-photo-file" accept="image/*"></div>
+          </div>
+
+          <!-- GUARANTOR (gold loan only) -->
           <div id="ln-guarantor-section">
             <div class="form-grp"><label>Guarantor Name</label><input type="text" id="ln-guarantor"></div>
             <div class="three-col">
@@ -482,8 +514,31 @@ td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
               <div class="form-grp"></div>
             </div>
           </div>
+
+          <!-- NOMINEE + CO-APPLICANT (all loans EXCEPT gold loan) -->
+          <div id="ln-nominee-coapplicant-section">
+            <div style="font-size:13px;font-weight:500;color:#0d2137;margin:10px 0 6px;">Nominee Details</div>
+            <div class="three-col">
+              <div class="form-grp"><label>Nominee Name</label><input type="text" id="ln-nominee-name"></div>
+              <div class="form-grp"><label>Relation</label>
+                <select id="ln-nominee-relation"><option>Spouse</option><option>Son</option><option>Daughter</option><option>Father</option><option>Mother</option><option>Other</option></select>
+              </div>
+              <div class="form-grp"><label>Mobile</label><input type="text" id="ln-nominee-mobile" maxlength="10"></div>
+            </div>
+            <div style="font-size:13px;font-weight:500;color:#0d2137;margin:10px 0 6px;">Co-Applicant Details (Optional)</div>
+            <div class="three-col">
+              <div class="form-grp"><label>Co-Applicant Name</label><input type="text" id="ln-coapp-name"></div>
+              <div class="form-grp"><label>Relation</label><input type="text" id="ln-coapp-relation"></div>
+              <div class="form-grp"><label>Mobile</label><input type="text" id="ln-coapp-mobile" maxlength="10"></div>
+            </div>
+            <div class="form-grp"><label>Co-Applicant Aadhar</label><input type="text" id="ln-coapp-aadhar" maxlength="12" style="max-width:300px;"></div>
+          </div>
+
           <div class="form-grp" style="margin-top:6px;">
             <label><input type="checkbox" id="ln-health-insurance"> Health Insurance opt-in (mandatory pitch, customer can decline)</label>
+          </div>
+          <div class="form-grp">
+            <label><input type="checkbox" id="ln-auto-debit" checked> Auto-Debit EMI from savings account balance (jab automatic system ready hoga)</label>
           </div>
           <div id="loan-preview" class="success-msg">Amount aur details bharo, calculation yahan dikhega.</div>
           <div class="btn-row">
@@ -900,6 +955,32 @@ async function findMemberByAccNo(accNo) {
   return data;
 }
 
+// Full member fetch for loan form display panel (photo, name, mobile, KYC, balance)
+let memberFetchTimer = null;
+function debounceFetchMember() {
+  clearTimeout(memberFetchTimer);
+  memberFetchTimer = setTimeout(fetchMemberForLoan, 500);
+}
+
+async function fetchMemberForLoan() {
+  const accNo = document.getElementById('ln-accno').value.trim();
+  const panel = document.getElementById('ln-member-info');
+  if (!accNo) { panel.style.display = 'none'; return; }
+
+  const { data } = await db.from('members').select('*').eq('account_no', accNo).maybeSingle();
+  if (!data) { panel.style.display = 'none'; return; }
+
+  panel.style.display = 'block';
+  document.getElementById('ln-member-name').textContent = `${data.first_name} ${data.last_name || ''}`;
+  document.getElementById('ln-member-mobile').textContent = data.mobile_primary || '-';
+  document.getElementById('ln-member-kyc').textContent = data.kyc_status || 'pending';
+  document.getElementById('ln-member-balance').textContent = fmt(data.current_balance || 0);
+  const photoEl = document.getElementById('ln-member-photo');
+  photoEl.innerHTML = data.photo_url
+    ? `<img src="${data.photo_url}" style="width:100%;height:100%;object-fit:cover;">`
+    : 'No Photo';
+}
+
 async function createFD() {
   const accNo = document.getElementById('fd-accno').value;
   const member = await findMemberByAccNo(accNo);
@@ -1024,7 +1105,8 @@ const categoryLabels = {
   small_business: 'Chota Business Loan', big_business: 'Bada Business Loan',
   gold_loan: 'Gold Loan', silver_loan: 'Silver Loan', home_loan: 'Home Loan',
   shiksha_loan: 'Saathi Shiksha Loan', group_loan: 'Group Loan',
-  fd_loan: 'Loan Against FD', shaadi_loan: 'Sukanya Shaadi Loan'
+  fd_loan: 'Loan Against FD', shaadi_loan: 'Sukanya Shaadi Loan',
+  consumer_loan: 'Consumer Loan', medical_emergency_loan: 'Medical Emergency Loan'
 };
 
 async function getSchemes(category) {
@@ -1047,10 +1129,16 @@ function selectLoanCategory(cat) {
   const extraRow2 = document.getElementById('ln-extra-row-2');
   const amountWrapper = document.getElementById('ln-amount-wrapper');
   const guarantorSection = document.getElementById('ln-guarantor-section');
+  const itemPhotoSection = document.getElementById('ln-item-photo-section');
+  const nomineeCoappSection = document.getElementById('ln-nominee-coapplicant-section');
   extra1.innerHTML = ''; extraRow2.innerHTML = '';
 
-  // Gold/Silver loans: no guarantor, amount is auto-calculated (read-only)
-  guarantorSection.style.display = (cat === 'gold_loan' || cat === 'silver_loan') ? 'none' : 'block';
+  // Gold Loan ONLY: guarantor instead of nominee/co-applicant. All other loans: nominee+co-applicant, no guarantor.
+  const isGoldOnly = (cat === 'gold_loan');
+  guarantorSection.style.display = isGoldOnly ? 'block' : 'none';
+  nomineeCoappSection.style.display = isGoldOnly ? 'none' : 'block';
+  // Item photo for gold/silver only
+  itemPhotoSection.style.display = (cat === 'gold_loan' || cat === 'silver_loan') ? 'block' : 'none';
 
   if (cat === 'gold_loan' || cat === 'silver_loan') {
     const isGold = cat === 'gold_loan';
@@ -1094,6 +1182,12 @@ function selectLoanCategory(cat) {
   } else if (cat === 'shaadi_loan') {
     amountWrapper.innerHTML = `<label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
     extra1.innerHTML = `<label>Security Document Type *</label><select id="ln-securitytype"><option value="home_paper">Home Paper</option><option value="shop_paper">Shop Paper</option></select>`;
+  } else if (cat === 'consumer_loan') {
+    amountWrapper.innerHTML = `<label>Total Item/Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
+    extra1.innerHTML = `<label>Item/Purpose Description</label><input type="text" id="ln-itempurpose" placeholder="e.g. TV, Fridge, Furniture">`;
+  } else if (cat === 'medical_emergency_loan') {
+    amountWrapper.innerHTML = `<label>Loan Amount (₹, max ₹5,00,000) *</label><input type="number" id="ln-amount" max="500000" oninput="calcLoanPreview()">`;
+    extra1.innerHTML = `<label>Medical Reason</label><input type="text" id="ln-medicalreason" placeholder="e.g. Surgery, Hospitalization">`;
   } else {
     amountWrapper.innerHTML = `<label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
   }
@@ -1161,7 +1255,25 @@ async function calcLoanPreview() {
     html = `Loan eligible: <b>70% of FD deposit amount</b> &middot; ROI: <b>12%</b> &middot; Linked FD: ${fdNo || '(enter FD number)'}`;
   }
   else if (selectedLoanCategory === 'shaadi_loan') {
-    html = `Amount Range: ₹50,000 - ₹3,00,000 &middot; Against: Home/Shop paper security &middot; Guarantor required`;
+    html = `Amount Range: ₹50,000 - ₹3,00,000 &middot; Against: Home/Shop paper security &middot; Nominee required`;
+  }
+  else if (selectedLoanCategory === 'consumer_loan') {
+    const schemes = await getSchemes('consumer_loan');
+    const s = schemes[0];
+    const financedAmount = amount * 0.70;
+    const customerShare = amount * 0.30;
+    const pf = financedAmount * (s.pf_percent / 100);
+    html = `Total Item Value: <b>${fmt(amount)}</b> &middot; Society Finances (70%): <b>${fmt(financedAmount)}</b> &middot; Customer Pays (30%): <b>${fmt(customerShare)}</b> &middot; PF: ${fmt(pf)} (1.5% of disbursed)`;
+  }
+  else if (selectedLoanCategory === 'medical_emergency_loan') {
+    const schemes = await getSchemes('medical_emergency_loan');
+    const s = schemes[0];
+    if (amount > 500000) {
+      html = `<span style="color:#A32D2D">⚠ Maximum limit ₹5,00,000 hai, amount kam karo</span>`;
+    } else {
+      const pf = amount * (s.pf_percent / 100);
+      html = `Monthly Rate: <b>${s.base_monthly_rate}%</b> &middot; PF: ${fmt(pf)} (3% flat) &middot; Max Limit: ₹5,00,000`;
+    }
   }
 
   previewEl.innerHTML = html;
@@ -1255,6 +1367,25 @@ async function submitLoan() {
     interestRate = 12;
   } else if (selectedLoanCategory === 'shaadi_loan') {
     interestRate = 0;
+  } else if (selectedLoanCategory === 'consumer_loan') {
+    const schemes = await getSchemes('consumer_loan');
+    pfAmount = (amount * 0.70) * (schemes[0].pf_percent/100); interestRate = 0;
+  } else if (selectedLoanCategory === 'medical_emergency_loan') {
+    const schemes = await getSchemes('medical_emergency_loan');
+    pfAmount = amount * (schemes[0].pf_percent/100); interestRate = schemes[0].base_monthly_rate;
+  }
+
+  // Upload item photo if present (gold/silver loans)
+  let itemPhotoUrl = null;
+  const itemPhotoInput = document.getElementById('ln-item-photo-file');
+  if (itemPhotoInput && itemPhotoInput.files && itemPhotoInput.files[0]) {
+    const file = itemPhotoInput.files[0];
+    const path = `loan_items/${Date.now()}_${Math.random().toString(36).slice(2)}.${file.name.split('.').pop()}`;
+    const { error: uploadErr } = await db.storage.from('member-documents').upload(path, file);
+    if (!uploadErr) {
+      const { data: urlData } = db.storage.from('member-documents').getPublicUrl(path);
+      itemPhotoUrl = urlData.publicUrl;
+    }
   }
 
   const payload = {
@@ -1264,7 +1395,8 @@ async function submitLoan() {
     pf_amount: pfAmount,
     item_weight_grams: parseFloat(document.getElementById('ln-weight')?.value) || null,
     item_purity: document.getElementById('ln-carat')?.value ? document.getElementById('ln-carat').value + 'KT' : null,
-    item_description: document.getElementById('ln-jewellery-type')?.value || null,
+    item_description: document.getElementById('ln-jewellery-type')?.value || document.getElementById('ln-itempurpose')?.value || document.getElementById('ln-medicalreason')?.value || null,
+    item_photo_url: itemPhotoUrl,
     cibil_score: parseInt(document.getElementById('ln-cibil')?.value) || null,
     property_value: parseFloat(document.getElementById('ln-propvalue')?.value) || null,
     property_address: document.getElementById('ln-propaddress')?.value || null,
@@ -1274,6 +1406,14 @@ async function submitLoan() {
     guarantor_name: document.getElementById('ln-guarantor').value,
     guarantor_mobile: document.getElementById('ln-guarantor-mobile').value,
     guarantor_aadhar: document.getElementById('ln-guarantor-aadhar').value,
+    loan_nominee_name: document.getElementById('ln-nominee-name')?.value || null,
+    loan_nominee_relation: document.getElementById('ln-nominee-relation')?.value || null,
+    loan_nominee_mobile: document.getElementById('ln-nominee-mobile')?.value || null,
+    co_applicant_name: document.getElementById('ln-coapp-name')?.value || null,
+    co_applicant_relation: document.getElementById('ln-coapp-relation')?.value || null,
+    co_applicant_mobile: document.getElementById('ln-coapp-mobile')?.value || null,
+    co_applicant_aadhar: document.getElementById('ln-coapp-aadhar')?.value || null,
+    auto_debit_enabled: document.getElementById('ln-auto-debit')?.checked || false,
     health_insurance_opted: document.getElementById('ln-health-insurance').checked,
     requires_head_office: requiresHO,
     bm_approval_status: 'pending',
@@ -1302,9 +1442,96 @@ async function submitLoan() {
     await db.from('loan_collections').insert(collections);
   }
 
-  document.getElementById('loan-result').innerHTML = `<div class="success-msg">✅ Loan submitted! Loan No: <b>${loanNo}</b> &middot; Status: Pending BM Approval${requiresHO ? ' → Head Office Approval bhi chahiye hoga (amount > ₹7L)' : ''}</div>`;
+  document.getElementById('loan-result').innerHTML = `<div class="success-msg">✅ Loan submitted! Loan No: <b>${loanNo}</b> &middot; Status: Pending BM Approval${requiresHO ? ' → Head Office Approval bhi chahiye hoga (amount > ₹7L)' : ''}
+    <br><button class="btn btn-primary" style="margin-top:8px;" onclick="printLoanReceipt('${loanData.id}')">🖨️ Print Receipt</button></div>`;
   document.getElementById('ln-amount').value = '';
   document.getElementById('ln-accno').value = '';
+}
+
+// ============================================================
+// PRINT LOAN RECEIPT (browser print dialog, with item photo + full details)
+// ============================================================
+async function printLoanReceipt(loanId) {
+  const { data: loan } = await db.from('loans').select('*, members(*), branches(branch_name, branch_code)').eq('id', loanId).single();
+  if (!loan) { alert('Loan details nahi mile'); return; }
+
+  const m = loan.members || {};
+  const catLabel = categoryLabels[loan.category] || loan.category;
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`
+    <html><head><title>Loan Receipt - ${loan.loan_no}</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 30px; color: #222; }
+      h1 { color: #0d2137; font-size: 20px; margin-bottom: 2px; }
+      .sub { color: #888; font-size: 12px; margin-bottom: 20px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+      td { padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 13px; }
+      td.label { color: #666; width: 40%; }
+      .section-title { background: #0d2137; color: #fff; padding: 6px 10px; font-size: 13px; margin: 16px 0 6px; }
+      img.item-photo { max-width: 200px; border-radius: 6px; margin-top: 10px; }
+      .sign-row { display: flex; justify-content: space-between; margin-top: 50px; }
+      .sign-box { text-align: center; font-size: 12px; }
+      .sign-box .line { border-top: 1px solid #333; width: 180px; margin-bottom: 4px; }
+    </style>
+    </head><body>
+      <h1>ASA Cooperative Society</h1>
+      <div class="sub">Loan Application Receipt &middot; ${loan.branches?.branch_name || ''} (${loan.branches?.branch_code || ''})</div>
+
+      <div class="section-title">Loan Details</div>
+      <table>
+        <tr><td class="label">Loan No.</td><td>${loan.loan_no}</td></tr>
+        <tr><td class="label">Category</td><td>${catLabel}</td></tr>
+        <tr><td class="label">Loan Amount</td><td>${fmt(loan.loan_amount)}</td></tr>
+        <tr><td class="label">Interest Rate</td><td>${loan.interest_rate != null ? loan.interest_rate + '%' : '-'}</td></tr>
+        <tr><td class="label">PF Amount</td><td>${fmt(loan.pf_amount || 0)}</td></tr>
+        <tr><td class="label">Start Date</td><td>${loan.start_date}</td></tr>
+        <tr><td class="label">Status</td><td>${loan.status}</td></tr>
+      </table>
+
+      <div class="section-title">Member Details (KYC)</div>
+      <table>
+        <tr><td class="label">Name</td><td>${m.first_name || ''} ${m.last_name || ''}</td></tr>
+        <tr><td class="label">Account No.</td><td>${m.account_no || ''}</td></tr>
+        <tr><td class="label">Mobile</td><td>${m.mobile_primary || ''}</td></tr>
+        <tr><td class="label">Aadhar No.</td><td>${m.aadhar_no || '-'}</td></tr>
+        <tr><td class="label">PAN No.</td><td>${m.pan_no || '-'}</td></tr>
+        <tr><td class="label">Address</td><td>${m.address || ''}, ${m.district || ''}, ${m.state || ''}</td></tr>
+      </table>
+
+      ${loan.item_description || loan.item_weight_grams ? `
+      <div class="section-title">Item Details</div>
+      <table>
+        ${loan.item_description ? `<tr><td class="label">Item</td><td>${loan.item_description}</td></tr>` : ''}
+        ${loan.item_weight_grams ? `<tr><td class="label">Weight</td><td>${loan.item_weight_grams}gm</td></tr>` : ''}
+        ${loan.item_purity ? `<tr><td class="label">Purity</td><td>${loan.item_purity}</td></tr>` : ''}
+      </table>
+      ${loan.item_photo_url ? `<img class="item-photo" src="${loan.item_photo_url}">` : ''}
+      ` : ''}
+
+      ${loan.loan_nominee_name ? `
+      <div class="section-title">Nominee</div>
+      <table><tr><td class="label">Name</td><td>${loan.loan_nominee_name} (${loan.loan_nominee_relation || ''})</td></tr></table>
+      ` : ''}
+
+      ${loan.co_applicant_name ? `
+      <div class="section-title">Co-Applicant</div>
+      <table><tr><td class="label">Name</td><td>${loan.co_applicant_name} (${loan.co_applicant_relation || ''})</td></tr></table>
+      ` : ''}
+
+      ${loan.guarantor_name ? `
+      <div class="section-title">Guarantor</div>
+      <table><tr><td class="label">Name</td><td>${loan.guarantor_name} &middot; ${loan.guarantor_mobile || ''}</td></tr></table>
+      ` : ''}
+
+      <div class="sign-row">
+        <div class="sign-box"><div class="line"></div>Applicant Signature</div>
+        <div class="sign-box"><div class="line"></div>Authorized Officer</div>
+      </div>
+    </body></html>
+  `);
+  printWindow.document.close();
+  printWindow.print();
 }
 
 let currentLoanPage = 0;
