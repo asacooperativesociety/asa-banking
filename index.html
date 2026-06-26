@@ -534,6 +534,12 @@ td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
             <div class="form-grp"><label>Co-Applicant Aadhar</label><input type="text" id="ln-coapp-aadhar" maxlength="12" style="max-width:300px;"></div>
           </div>
 
+          <!-- GOLD LOAN: 5 SCHEME BOXES (highlight applicable one based on amount/carat) -->
+          <div id="ln-gold-scheme-boxes" style="display:none;margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:500;color:#0d2137;margin-bottom:8px;">Gold Loan Schemes</div>
+            <div id="gold-scheme-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;"></div>
+          </div>
+
           <div class="form-grp" style="margin-top:6px;">
             <label><input type="checkbox" id="ln-health-insurance"> Health Insurance opt-in (mandatory pitch, customer can decline)</label>
           </div>
@@ -1284,14 +1290,22 @@ async function calcLoanPreview() {
 // Net Weight = Gross Weight - Total Deduction (carat-based for gold, fixed dust for silver)
 // Loan Amount = Net Weight x Live Market Rate (per gram, already adjusted -₹4000 from spot)
 // ============================================================
+// Linear interpolation: rate at 24kt = rate_24kt (lowest), rate at 18kt = rate_18kt (highest)
+function caratInterestRate(carat, rate24kt, rate18kt) {
+  const frac = (24 - carat) / (24 - 18); // 0 at 24kt, 1 at 18kt
+  return rate24kt + frac * (rate18kt - rate24kt);
+}
+
 async function calcGoldSilverPreview() {
   const previewEl = document.getElementById('loan-preview');
   const weight = parseFloat(document.getElementById('ln-weight')?.value) || 0;
   const rate = cachedMarketRate[selectedLoanCategory];
+  const goldBoxesWrapper = document.getElementById('ln-gold-scheme-boxes');
 
   if (!weight) {
     previewEl.textContent = 'Gross weight bharo calculation dekhne ke liye.';
     document.getElementById('ln-amount').value = '';
+    if (goldBoxesWrapper) goldBoxesWrapper.style.display = 'none';
     return;
   }
   if (!rate) {
@@ -1299,11 +1313,11 @@ async function calcGoldSilverPreview() {
     return;
   }
 
-  let totalDeduction, deductionNote;
+  let totalDeduction, deductionNote, carat;
   if (selectedLoanCategory === 'gold_loan') {
-    const carat = parseInt(document.getElementById('ln-carat')?.value) || 22;
+    carat = parseInt(document.getElementById('ln-carat')?.value) || 22;
     totalDeduction = caratDeductionTable[carat];
-    deductionNote = `${carat}KT carat deduction (incl. 0.5gm dust): ${totalDeduction}gm`;
+    deductionNote = `${carat}KT carat deduction (incl. dust): ${totalDeduction}gm`;
   } else {
     totalDeduction = SILVER_DUST_DEDUCTION;
     deductionNote = `Dust deduction (fixed): ${totalDeduction}gm`;
@@ -1311,26 +1325,46 @@ async function calcGoldSilverPreview() {
 
   const netWeight = Math.max(0, weight - totalDeduction);
   const loanAmount = netWeight * rate;
-
   document.getElementById('ln-amount').value = Math.round(loanAmount);
 
   const schemes = await getSchemes(selectedLoanCategory);
-  let extraInfo = '';
+
   if (selectedLoanCategory === 'gold_loan') {
+    // Render all 5 scheme boxes, highlight the applicable one
+    if (goldBoxesWrapper) {
+      goldBoxesWrapper.style.display = 'block';
+      const grid = document.getElementById('gold-scheme-grid');
+      grid.innerHTML = schemes.map(s => {
+        const isApplicable = loanAmount >= s.amount_min && loanAmount <= s.amount_max;
+        const schemeRate = caratInterestRate(carat, s.rate_24kt, s.rate_18kt);
+        const pfDisplay = s.pf_type === 'percent' ? `${s.pf_percent}% of loan` : `₹${s.pf_flat_per_gram}/gram`;
+        return `<div style="border:2px solid ${isApplicable ? '#e65c00' : '#eee'};background:${isApplicable ? '#FFF0E6' : '#fafafa'};border-radius:8px;padding:10px;font-size:11px;">
+          <div style="font-weight:600;font-size:12px;color:#0d2137;margin-bottom:4px;">${s.scheme_name}</div>
+          <div>Per Gram Rate: <b>${fmt(rate)}</b></div>
+          <div>ROI: <b>${schemeRate.toFixed(3)}%/month</b> (at ${carat}KT)</div>
+          <div>PF: <b>${pfDisplay}</b></div>
+          <div>Tenure: <b>${s.tenure_months} months</b> ${s.renewal_mandatory ? '(Renewal Mandatory)' : ''}</div>
+          ${isApplicable ? '<div style="color:#e65c00;font-weight:600;margin-top:4px;">✓ Applicable</div>' : ''}
+        </div>`;
+      }).join('');
+    }
+
     const scheme = schemes.find(s => loanAmount >= s.amount_min && loanAmount <= s.amount_max) || schemes[schemes.length - 1];
     if (scheme) {
-      const pf = loanAmount * (scheme.pf_percent / 100);
-      extraInfo = `<br>Scheme: <b>${scheme.scheme_name}</b> &middot; Monthly Rate: <b>${scheme.base_monthly_rate}%</b> &middot; Grace: ${scheme.grace_period_days} days &middot; Late (M1): ${scheme.late_rate_month1}% &middot; Late (M3+): ${scheme.late_rate_month3}% &middot; <span style="color:#A32D2D">Auction after ${scheme.auction_after_months} months</span> &middot; PF: ${fmt(pf)}`;
+      const schemeRate = caratInterestRate(carat, scheme.rate_24kt, scheme.rate_18kt);
+      const pf = scheme.pf_type === 'percent' ? loanAmount * (scheme.pf_percent / 100) : netWeight * scheme.pf_flat_per_gram;
+      previewEl.innerHTML = `Gross Weight: <b>${weight}gm</b> &middot; ${deductionNote} &middot; Net Weight: <b>${netWeight.toFixed(2)}gm</b> &middot; Rate: ${fmt(rate)}/gm &middot; <b>Loan Amount: ${fmt(loanAmount)}</b>
+        <br>Scheme: <b>${scheme.scheme_name}</b> &middot; ROI: <b>${schemeRate.toFixed(3)}%/month</b> &middot; PF: ${fmt(pf)} &middot; Grace: ${scheme.grace_period_days} din &middot; Miss hone par: +${scheme.late_rate_step}%/month (3 month tak) &middot; <span style="color:#A32D2D">Month 4: Notice &middot; Month 5: Auction (agar unpaid)</span>`;
     }
   } else {
+    if (goldBoxesWrapper) goldBoxesWrapper.style.display = 'none';
     const s = schemes[0];
     if (s) {
       const pf = loanAmount * (s.pf_percent / 100);
-      extraInfo = `<br>Monthly Rate: <b>${s.base_monthly_rate}%</b> &middot; Tenure: ${s.tenure_days} days &middot; PF: ${fmt(pf)} (2.5% flat)`;
+      previewEl.innerHTML = `Gross Weight: <b>${weight}gm</b> &middot; ${deductionNote} &middot; Net Weight: <b>${netWeight.toFixed(2)}gm</b> &middot; Rate: ${fmt(rate)}/gm &middot; <b>Loan Amount: ${fmt(loanAmount)}</b>
+        <br>Monthly Rate: <b>${s.base_monthly_rate}%</b> &middot; Tenure: ${s.tenure_days} days &middot; PF: ${fmt(pf)} (2.5% flat)`;
     }
   }
-
-  previewEl.innerHTML = `Gross Weight: <b>${weight}gm</b> &middot; ${deductionNote} &middot; Net Weight: <b>${netWeight.toFixed(2)}gm</b> &middot; Rate: ${fmt(rate)}/gm &middot; <b>Loan Amount: ${fmt(loanAmount)}</b>${extraInfo}`;
 }
 
 async function submitLoan() {
@@ -1352,7 +1386,13 @@ async function submitLoan() {
   } else if (selectedLoanCategory === 'gold_loan') {
     const schemes = await getSchemes('gold_loan');
     const scheme = schemes.find(s => amount >= s.amount_min && amount <= s.amount_max);
-    if (scheme) { pfAmount = amount * (scheme.pf_percent/100); interestRate = scheme.base_monthly_rate; }
+    const carat = parseInt(document.getElementById('ln-carat')?.value) || 22;
+    const netWeight = parseFloat(document.getElementById('ln-weight')?.value) - caratDeductionTable[carat];
+    if (scheme) {
+      interestRate = caratInterestRate(carat, scheme.rate_24kt, scheme.rate_18kt);
+      pfAmount = scheme.pf_type === 'percent' ? amount * (scheme.pf_percent/100) : netWeight * scheme.pf_flat_per_gram;
+      tenureDays = scheme.tenure_months * 30;
+    }
   } else if (selectedLoanCategory === 'silver_loan') {
     const schemes = await getSchemes('silver_loan'); pfAmount = amount * (schemes[0].pf_percent/100); tenureDays = schemes[0].tenure_days; interestRate = schemes[0].base_monthly_rate;
   } else if (selectedLoanCategory === 'home_loan') {
@@ -1392,6 +1432,7 @@ async function submitLoan() {
     loan_no: loanNo, member_id: member.id, branch_id: currentBranchId,
     category: selectedLoanCategory, loan_amount: amount,
     interest_rate: interestRate, tenure_days: tenureDays, tenure_years: tenureYears,
+    base_interest_rate: interestRate, current_interest_rate: interestRate,
     pf_amount: pfAmount,
     item_weight_grams: parseFloat(document.getElementById('ln-weight')?.value) || null,
     item_purity: document.getElementById('ln-carat')?.value ? document.getElementById('ln-carat').value + 'KT' : null,
