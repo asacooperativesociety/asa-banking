@@ -1077,34 +1077,45 @@ let selectedLoanCategory = null;
 let cachedSchemes = {}; // category -> array of schemes
 let cachedMarketRate = { gold_loan: null, silver_loan: null, fetchedAt: null };
 
+// Standard gold fineness ratios (industry standard, India)
+const goldFinenessRatio = { 24: 1.0, 22: 0.916, 21: 0.875, 20: 0.833, 18: 0.75 };
+
 // Total deduction in grams per carat (0.5gm dust included) - confirmed values
 const caratDeductionTable = { 18: 0.9, 20: 1.9, 21: 2.4, 22: 2.9, 24: 0.5 };
 const SILVER_DUST_DEDUCTION = 0.5; // silver: only dust, no carat concept
 
-// Fetch live gold (XAU) / silver (XAG) rate in INR per gram
+// Fetch today's manually-entered base rate (24K gold / pure silver) from database
 async function fetchMarketRate(category) {
   const rateInput = document.getElementById('ln-market-rate');
-  if (rateInput) rateInput.value = 'Fetching live rate...';
+  if (rateInput) rateInput.value = 'Loading rate...';
   try {
-    const symbol = category === 'gold_loan' ? 'XAU' : 'XAG';
-    const [metalRes, fxRes] = await Promise.all([
-      fetch(`https://api.gold-api.com/price/${symbol}`).then(r => r.json()),
-      fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json())
-    ]);
-    const usdPerOz = metalRes.price;
-    const usdToInr = fxRes.rates.INR;
-    const TROY_OZ_TO_GRAM = 31.1035;
-    const inrPerGram24k = (usdPerOz * usdToInr) / TROY_OZ_TO_GRAM;
-    // Adjust by ₹4000/gram less than pure market rate (society's buy rate, per your instruction)
-    const adjustedRate = inrPerGram24k - 4000 > 0 ? inrPerGram24k - 4000 : inrPerGram24k;
-    cachedMarketRate[category] = adjustedRate;
-    cachedMarketRate.fetchedAt = new Date();
-    if (rateInput) rateInput.value = fmt(adjustedRate) + '/gram';
+    const { data } = await db.from('metal_rates').select('*').eq('metal_type', category === 'gold_loan' ? 'gold' : 'silver').order('rate_date', { ascending: false }).limit(1).maybeSingle();
+    if (data) {
+      cachedMarketRate[category] = data.rate_24k_or_pure_per_gram;
+      cachedMarketRate.fetchedAt = data.rate_date;
+      if (rateInput) rateInput.value = fmt(data.rate_24k_or_pure_per_gram) + '/gram (24K, as on ' + data.rate_date + ')';
+    } else {
+      if (rateInput) rateInput.value = 'Aaj ka rate set nahi hua - "Set Today\'s Rate" use karo';
+      cachedMarketRate[category] = null;
+    }
     calcLoanPreview();
   } catch (e) {
-    if (rateInput) rateInput.value = 'Rate fetch failed - retry';
+    if (rateInput) rateInput.value = 'Rate load error';
     console.error('Market rate fetch error:', e);
   }
+}
+
+// Staff/Admin sets today's rate manually
+async function setTodaysMetalRate(category) {
+  const rateValue = prompt(`Aaj ka ${category === 'gold_loan' ? '24K Gold' : 'Pure Silver'} rate (₹ per gram) daalo:`);
+  if (!rateValue || isNaN(rateValue)) return;
+  const metalType = category === 'gold_loan' ? 'gold' : 'silver';
+  const today = new Date().toISOString().split('T')[0];
+  const { error } = await db.from('metal_rates').upsert({
+    metal_type: metalType, rate_date: today, rate_24k_or_pure_per_gram: parseFloat(rateValue), set_by: currentUser.id
+  }, { onConflict: 'metal_type,rate_date' });
+  if (error) { alert('Error: ' + error.message); return; }
+  await fetchMarketRate(category);
 }
 
 const categoryLabels = {
@@ -1168,7 +1179,7 @@ function selectLoanCategory(cat) {
     extraRow2.innerHTML = `
       <div class="form-grp"><label>Gross Weight (grams) *</label><input type="number" id="ln-weight" step="0.01" oninput="calcLoanPreview()"></div>
       ${caratDropdown}
-      <div class="form-grp" id="ln-rate-display"><label>Live Market Rate (₹/gram)</label><input type="text" id="ln-market-rate" readonly style="background:#f5f5f5;"></div>
+      <div class="form-grp" id="ln-rate-display"><label>Today's 24K/Pure Rate (₹/gram)</label><div style="display:flex;gap:6px;"><input type="text" id="ln-market-rate" readonly style="background:#f5f5f5;flex:1;"><button type="button" class="btn" style="padding:6px 10px;font-size:11px;white-space:nowrap;" onclick="setTodaysMetalRate(selectedLoanCategory)">Set Rate</button></div></div>
     `;
     fetchMarketRate(cat);
   } else if (cat === 'home_loan') {
@@ -1299,7 +1310,7 @@ function caratInterestRate(carat, rate24kt, rate18kt) {
 async function calcGoldSilverPreview() {
   const previewEl = document.getElementById('loan-preview');
   const weight = parseFloat(document.getElementById('ln-weight')?.value) || 0;
-  const rate = cachedMarketRate[selectedLoanCategory];
+  const baseRate24kt = cachedMarketRate[selectedLoanCategory]; // this is the 24KT rate
   const goldBoxesWrapper = document.getElementById('ln-gold-scheme-boxes');
 
   if (!weight) {
@@ -1308,25 +1319,30 @@ async function calcGoldSilverPreview() {
     if (goldBoxesWrapper) goldBoxesWrapper.style.display = 'none';
     return;
   }
-  if (!rate) {
+  if (!baseRate24kt) {
     previewEl.textContent = 'Live market rate load ho raha hai, thoda wait karo...';
     return;
   }
 
-  let totalDeduction, deductionNote, carat;
+  let totalDeduction, deductionNote, carat, rate;
   if (selectedLoanCategory === 'gold_loan') {
     carat = parseInt(document.getElementById('ln-carat')?.value) || 22;
     totalDeduction = caratDeductionTable[carat];
     deductionNote = `${carat}KT carat deduction (incl. dust): ${totalDeduction}gm`;
+    // Per-gram rate scales with purity: rate(carat) = rate(24kt) * carat/24
+    rate = baseRate24kt * goldFinenessRatio[carat];
   } else {
     totalDeduction = SILVER_DUST_DEDUCTION;
     deductionNote = `Dust deduction (fixed): ${totalDeduction}gm`;
+    rate = baseRate24kt; // silver has no carat concept
   }
 
   const netWeight = Math.max(0, weight - totalDeduction);
   const loanAmount = netWeight * rate;
   document.getElementById('ln-amount').value = Math.round(loanAmount);
 
+  // Force-refresh schemes cache to avoid stale old-schema data
+  delete cachedSchemes[selectedLoanCategory];
   const schemes = await getSchemes(selectedLoanCategory);
 
   if (selectedLoanCategory === 'gold_loan') {
@@ -1337,10 +1353,11 @@ async function calcGoldSilverPreview() {
       grid.innerHTML = schemes.map(s => {
         const isApplicable = loanAmount >= s.amount_min && loanAmount <= s.amount_max;
         const schemeRate = caratInterestRate(carat, s.rate_24kt, s.rate_18kt);
+        const schemePerGramRate = baseRate24kt * goldFinenessRatio[carat];
         const pfDisplay = s.pf_type === 'percent' ? `${s.pf_percent}% of loan` : `₹${s.pf_flat_per_gram}/gram`;
         return `<div style="border:2px solid ${isApplicable ? '#e65c00' : '#eee'};background:${isApplicable ? '#FFF0E6' : '#fafafa'};border-radius:8px;padding:10px;font-size:11px;">
           <div style="font-weight:600;font-size:12px;color:#0d2137;margin-bottom:4px;">${s.scheme_name}</div>
-          <div>Per Gram Rate: <b>${fmt(rate)}</b></div>
+          <div>Per Gram Rate: <b>${fmt(schemePerGramRate)}</b></div>
           <div>ROI: <b>${schemeRate.toFixed(3)}%/month</b> (at ${carat}KT)</div>
           <div>PF: <b>${pfDisplay}</b></div>
           <div>Tenure: <b>${s.tenure_months} months</b> ${s.renewal_mandatory ? '(Renewal Mandatory)' : ''}</div>
@@ -1353,7 +1370,7 @@ async function calcGoldSilverPreview() {
     if (scheme) {
       const schemeRate = caratInterestRate(carat, scheme.rate_24kt, scheme.rate_18kt);
       const pf = scheme.pf_type === 'percent' ? loanAmount * (scheme.pf_percent / 100) : netWeight * scheme.pf_flat_per_gram;
-      previewEl.innerHTML = `Gross Weight: <b>${weight}gm</b> &middot; ${deductionNote} &middot; Net Weight: <b>${netWeight.toFixed(2)}gm</b> &middot; Rate: ${fmt(rate)}/gm &middot; <b>Loan Amount: ${fmt(loanAmount)}</b>
+      previewEl.innerHTML = `Gross Weight: <b>${weight}gm</b> &middot; ${deductionNote} &middot; Net Weight: <b>${netWeight.toFixed(2)}gm</b> &middot; Rate (${carat}KT): ${fmt(rate)}/gm &middot; <b>Loan Amount: ${fmt(loanAmount)}</b>
         <br>Scheme: <b>${scheme.scheme_name}</b> &middot; ROI: <b>${schemeRate.toFixed(3)}%/month</b> &middot; PF: ${fmt(pf)} &middot; Grace: ${scheme.grace_period_days} din &middot; Miss hone par: +${scheme.late_rate_step}%/month (3 month tak) &middot; <span style="color:#A32D2D">Month 4: Notice &middot; Month 5: Auction (agar unpaid)</span>`;
     }
   } else {
@@ -1384,6 +1401,7 @@ async function submitLoan() {
   } else if (selectedLoanCategory === 'big_business') {
     const schemes = await getSchemes('big_business'); pfAmount = amount * (schemes[0].pf_percent/100); tenureYears = 5; interestRate = schemes[0].base_annual_rate_min;
   } else if (selectedLoanCategory === 'gold_loan') {
+    delete cachedSchemes['gold_loan'];
     const schemes = await getSchemes('gold_loan');
     const scheme = schemes.find(s => amount >= s.amount_min && amount <= s.amount_max);
     const carat = parseInt(document.getElementById('ln-carat')?.value) || 22;
