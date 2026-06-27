@@ -1,1749 +1,535 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ASA Cooperative Society - Core Banking System</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
-body { background: #f4f5f7; }
-
-/* ===== LOGIN SCREEN ===== */
-#login-screen { display: flex; align-items: center; justify-content: center; height: 100vh; }
-.login-box { background: #fff; border-radius: 12px; padding: 40px; width: 360px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
-.login-logo { text-align: center; margin-bottom: 20px; }
-.login-box h1 { text-align: center; font-size: 20px; color: #0d2137; margin-bottom: 4px; }
-.login-box p.sub { text-align: center; font-size: 12px; color: #888; margin-bottom: 24px; }
-.login-box input { width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-.login-box button { width: 100%; padding: 11px; background: #0d2137; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; margin-top: 8px; }
-.login-box button:hover { background: #16314f; }
-#login-error { color: #A32D2D; font-size: 12px; text-align: center; margin-top: 10px; display: none; }
-.config-note { font-size: 11px; color: #999; text-align: center; margin-top: 16px; }
-
-/* ===== MAIN APP ===== */
-#app-screen { display: none; height: 100vh; }
-.app { display: flex; height: 100vh; }
-.sidebar { width: 220px; background: #0d2137; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
-.sb-head { padding: 14px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px; }
-.sb-logo { width: 34px; height: 34px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.sb-head .t1 { font-size: 13px; font-weight: 500; }
-.sb-head .t2 { font-size: 9px; color: rgba(255,255,255,0.45); }
-.nav-sec { padding: 6px 0; }
-.nav-lbl { font-size: 9px; color: rgba(255,255,255,0.3); padding: 0 12px 4px; letter-spacing: 0.08em; text-transform: uppercase; }
-.nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; font-size: 12px; color: rgba(255,255,255,0.65); border-left: 3px solid transparent; }
-.nav-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
-.nav-item.active { background: rgba(255,255,255,0.12); color: #fff; border-left-color: #e65c00; }
-.logout-btn { margin: auto 12px 12px; padding: 7px; text-align: center; font-size: 11px; background: rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer; }
-.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.topbar { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 10px 18px; display: flex; align-items: center; justify-content: space-between; }
-.topbar-title { font-size: 15px; font-weight: 500; color: #222; }
-.topbar-user { font-size: 12px; color: #666; }
-.content { flex: 1; overflow-y: auto; padding: 16px; }
-.page { display: none; }
-.page.active { display: block; }
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
-.stat { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 12px 14px; }
-.stat-lbl { font-size: 11px; color: #888; margin-bottom: 4px; }
-.stat-val { font-size: 20px; font-weight: 500; color: #222; }
-.card { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
-.card-title { font-size: 14px; font-weight: 500; color: #222; margin-bottom: 12px; }
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-.form-grp { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
-.form-grp label { font-size: 12px; color: #666; }
-.form-grp input, .form-grp select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; width: 100%; }
-.btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; border: 1px solid #ddd; background: #fff; }
-.btn-primary { background: #0d2137; color: #fff; border: none; }
-.btn-orange { background: #e65c00; color: #fff; border: none; }
-.btn-row { display: flex; gap: 8px; margin-top: 12px; }
-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-th { text-align: left; padding: 8px 10px; font-size: 11px; color: #888; border-bottom: 1px solid #eee; }
-td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
-.badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; }
-.bg { background: #EAF3DE; color: #3B6D11; }
-.ba { background: #FAEEDA; color: #854F0B; }
-.br { background: #FCEBEB; color: #A32D2D; }
-.success-msg { background: #EAF3DE; color: #3B6D11; padding: 10px 14px; border-radius: 8px; font-size: 12px; margin-top: 10px; }
-.loading { text-align: center; padding: 40px; color: #888; }
-</style>
-</head>
-<body>
-
-<!-- ============ LOGIN SCREEN ============ -->
-<div id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">
-      <svg width="60" height="60" viewBox="0 0 400 400">
-        <circle cx="200" cy="170" r="100" fill="none" stroke="#0F6E56" stroke-width="6"/>
-        <path d="M200 95 L233 135 L167 135 Z" fill="#0F6E56"/>
-        <rect x="160" y="137" width="80" height="9" fill="#0F6E56"/>
-        <rect x="170" y="148" width="11" height="52" fill="#0F6E56"/>
-        <rect x="194" y="148" width="11" height="52" fill="#0F6E56"/>
-        <rect x="218" y="148" width="11" height="52" fill="#0F6E56"/>
-        <rect x="242" y="148" width="11" height="52" fill="#0F6E56"/>
-        <rect x="156" y="202" width="88" height="9" fill="#0F6E56"/>
-      </svg>
-    </div>
-    <h1>ASA Cooperative Society</h1>
-    <p class="sub">Core Banking System - Staff Login</p>
-    <input type="text" id="login-username" placeholder="Username">
-    <input type="password" id="login-password" placeholder="Password">
-    <button onclick="doLogin()">Login</button>
-    <div id="login-error">Galat username ya password</div>
-    <p class="config-note">Default: admin / admin123</p>
-  </div>
-</div>
-
-<!-- ============ MAIN APP SCREEN ============ -->
-<div id="app-screen">
-<!-- ============ BRANCH LIST MODAL ============ -->
-<div id="branch-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:10px;padding:20px;width:90%;max-width:900px;max-height:80vh;overflow-y:auto;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <h2 style="font-size:16px;color:#222;">All Branches (Rajasthan)</h2>
-      <button class="btn" onclick="closeBranchModal()" style="padding:4px 10px;">Close</button>
-    </div>
-    <div id="branch-modal-body" class="loading">Loading...</div>
-  </div>
-</div>
-
-<div class="app">
-  <div class="sidebar">
-    <div class="sb-head">
-      <div class="sb-logo">
-        <svg width="22" height="22" viewBox="0 0 400 400">
-          <circle cx="200" cy="170" r="100" fill="none" stroke="#0F6E56" stroke-width="6"/>
-          <path d="M200 95 L233 135 L167 135 Z" fill="#0F6E56"/>
-          <rect x="160" y="137" width="80" height="9" fill="#0F6E56"/>
-          <rect x="170" y="148" width="11" height="52" fill="#0F6E56"/>
-          <rect x="194" y="148" width="11" height="52" fill="#0F6E56"/>
-          <rect x="218" y="148" width="11" height="52" fill="#0F6E56"/>
-          <rect x="242" y="148" width="11" height="52" fill="#0F6E56"/>
-          <rect x="156" y="202" width="88" height="9" fill="#0F6E56"/>
-        </svg>
-      </div>
-      <div><div class="t1">ASA Society</div><div class="t2">Core Banking v1.0</div></div>
-    </div>
-    <div class="nav-sec">
-      <div class="nav-lbl">Main</div>
-      <div class="nav-item active" onclick="goPage('dash', this)">Dashboard</div>
-    </div>
-    <div class="nav-sec">
-      <div class="nav-lbl">Members</div>
-      <div class="nav-item" onclick="goPage('acc', this)">Account Opening</div>
-      <div class="nav-item" onclick="goPage('acclist', this)">Member List</div>
-    </div>
-    <div class="nav-sec">
-      <div class="nav-lbl">Deposits</div>
-      <div class="nav-item" onclick="goPage('fd', this)">Fixed Deposit (FD)</div>
-      <div class="nav-item" onclick="goPage('rd', this)">Recurring (RD)</div>
-      <div class="nav-item" onclick="goPage('td', this)">Term Deposit (TD)</div>
-    </div>
-    <div class="nav-sec">
-      <div class="nav-lbl">Loans</div>
-      <div class="nav-item" onclick="goPage('loan', this)">New Loan</div>
-      <div class="nav-item" onclick="goPage('coll', this)">Daily Collection</div>
-      <div class="nav-item" onclick="goPage('loanlist', this)">All Loans</div>
-      <div class="nav-item" onclick="goPage('approvals', this)">Pending Approvals</div>
-    </div>
-    <div class="logout-btn" onclick="doLogout()">Logout</div>
-  </div>
-
-  <div class="main">
-    <div class="topbar">
-      <div class="topbar-title" id="pg-title">Dashboard</div>
-      <div class="topbar-user" id="user-info"></div>
-    </div>
-    <div class="content">
-
-      <div class="page active" id="page-dash">
-        <div class="stat-grid">
-          <div class="stat"><div class="stat-lbl">Total Members</div><div class="stat-val" id="stat-members">-</div></div>
-          <div class="stat"><div class="stat-lbl">Active Loans</div><div class="stat-val" id="stat-loans">-</div></div>
-          <div class="stat"><div class="stat-lbl">Active FDs</div><div class="stat-val" id="stat-fds">-</div></div>
-          <div class="stat" id="branch-stat-card" style="cursor:pointer" onclick="showBranchList()"><div class="stat-lbl">Branch</div><div class="stat-val" id="stat-branch">-</div><div style="font-size:10px;color:#888" id="branch-click-hint"></div></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Recent Members</div>
-          <div id="recent-members" class="loading">Loading...</div>
-        </div>
-      </div>
-
-      <div class="page" id="page-acc">
-        <!-- ASA FORM HEADER (replaces "Federal Bank" branding from reference) -->
-        <div style="background:#0d2137;color:#fff;border-radius:10px;padding:16px 20px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-size:18px;font-weight:600;">ASA Cooperative Society</div>
-            <div style="font-size:11px;opacity:0.7;">Account Opening Form &middot; Form Version C-2026</div>
-          </div>
-          <div style="background:#fff;color:#0d2137;border-radius:6px;padding:6px 14px;font-size:11px;text-align:center;">
-            <div style="font-weight:600;">PASSPORT PHOTO</div>
-            <div id="acc-photo-preview" style="width:60px;height:70px;margin:4px auto 0;background:#f0f0f0;border:1px dashed #999;display:flex;align-items:center;justify-content:center;font-size:9px;color:#888;overflow:hidden;">No Photo</div>
-          </div>
-        </div>
-
-        <div class="tab-row" style="display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid #eee;">
-          <div class="acc-tab active" data-tab="personal" onclick="switchAccTab('personal')" style="padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:2px solid #e65c00;color:#0d2137;font-weight:500;">1. Personal Info</div>
-          <div class="acc-tab" data-tab="kyc" onclick="switchAccTab('kyc')" style="padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;color:#888;">2. KYC Documents</div>
-          <div class="acc-tab" data-tab="address" onclick="switchAccTab('address')" style="padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;color:#888;">3. Address & Account</div>
-          <div class="acc-tab" data-tab="nominee" onclick="switchAccTab('nominee')" style="padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;color:#888;">4. Nominee</div>
-          <div class="acc-tab" data-tab="crosssale" onclick="switchAccTab('crosssale')" style="padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;color:#888;">5. Cross-Sale</div>
-        </div>
-
-        <!-- TAB 1: PERSONAL INFO -->
-        <div class="acc-tab-content" id="acctab-personal">
-          <div class="card">
-            <div class="card-title">Applicant Personal Info</div>
-            <div class="three-col">
-              <div class="form-grp"><label>First Name *</label><input type="text" id="m-fname"></div>
-              <div class="form-grp"><label>Middle Name</label><input type="text" id="m-mname"></div>
-              <div class="form-grp"><label>Last Name</label><input type="text" id="m-lname"></div>
-            </div>
-            <div class="three-col">
-              <div class="form-grp"><label>Father's/Husband's Name *</label><input type="text" id="m-father"></div>
-              <div class="form-grp"><label>Mother's Name</label><input type="text" id="m-mother"></div>
-              <div class="form-grp"><label>Gender</label>
-                <select id="m-gender"><option>Male</option><option>Female</option><option>Third Gender</option></select>
-              </div>
-            </div>
-            <div class="three-col">
-              <div class="form-grp"><label>Date of Birth *</label><input type="date" id="m-dob"></div>
-              <div class="form-grp"><label>Marital Status</label>
-                <select id="m-marital"><option>Single</option><option>Married</option><option>Others</option></select>
-              </div>
-              <div class="form-grp"><label>Mobile *</label><input type="text" id="m-mobile" maxlength="10" placeholder="10 digit mobile"></div>
-            </div>
-            <div class="three-col">
-              <div class="form-grp"><label>Alternate Mobile</label><input type="text" id="m-mobile2" maxlength="10"></div>
-              <div class="form-grp"><label>Email</label><input type="email" id="m-email"></div>
-              <div class="form-grp"><label>Occupation</label>
-                <select id="m-occupation"><option>Salaried</option><option>Self Employed</option><option>Retired</option><option>Home Maker</option><option>Student</option><option>Unemployed</option><option>Other</option></select>
-              </div>
-            </div>
-            <div class="three-col">
-              <div class="form-grp"><label>Monthly Income (₹)</label>
-                <select id="m-income"><option value="10000">≤ ₹10,000</option><option value="25000">₹10,001 - ₹25,000</option><option value="50000">₹25,001 - ₹50,000</option><option value="100000">₹50,001 - ₹1,00,000</option><option value="500000">₹1,00,001 - ₹5 Lakhs</option><option value="999999999">Above ₹5 Lakhs</option></select>
-              </div>
-              <div class="form-grp"><label>Account Type *</label>
-                <select id="m-acctype">
-                  <option>Simple Saving Account</option>
-                  <option>Mahila Bachat Khata</option>
-                  <option>Senior Saving Account</option>
-                  <option>Sukanya Bachat Khata</option>
-                  <option>Saman Bachat Khata</option>
-                  <option>Daily Bachat Khata</option>
-                  <option>Super Saving Account</option>
-                  <option>Classic Saving Account</option>
-                </select>
-              </div>
-              <div class="form-grp"><label>Photo Upload</label><input type="file" id="m-photo-file" accept="image/*" onchange="previewPhoto(this)"></div>
-            </div>
-            <div class="btn-row"><button class="btn btn-primary" onclick="switchAccTab('kyc')">Next: KYC Documents →</button></div>
-          </div>
-        </div>
-
-        <!-- TAB 2: KYC DOCUMENTS -->
-        <div class="acc-tab-content" id="acctab-kyc" style="display:none;">
-          <div class="card">
-            <div class="card-title">Officially Valid Documents (KYC)</div>
-            <div class="three-col">
-              <div class="form-grp"><label>Aadhar Number</label><input type="text" id="m-aadhar" maxlength="12" placeholder="12 digit Aadhar"></div>
-              <div class="form-grp"><label>Aadhar Document Upload</label><input type="file" id="m-aadhar-file" accept="image/*,.pdf"></div>
-              <div class="form-grp"><label>PAN Number</label><input type="text" id="m-pan" maxlength="10" placeholder="ABCDE1234F" style="text-transform:uppercase;"></div>
-            </div>
-            <div class="three-col">
-              <div class="form-grp"><label>PAN Document Upload</label><input type="file" id="m-pan-file" accept="image/*,.pdf"></div>
-              <div class="form-grp"><label>Voter ID Number</label><input type="text" id="m-voterid"></div>
-              <div class="form-grp"><label>Voter ID Upload</label><input type="file" id="m-voterid-file" accept="image/*,.pdf"></div>
-            </div>
-            <div class="three-col">
-              <div class="form-grp"><label>Driving License Number</label><input type="text" id="m-dl"></div>
-              <div class="form-grp"><label>Driving License Upload</label><input type="file" id="m-dl-file" accept="image/*,.pdf"></div>
-              <div class="form-grp"><label>&nbsp;</label></div>
-            </div>
-            <div class="alert" style="background:#FFF8E6;color:#854F0B;padding:8px 12px;border-radius:6px;font-size:12px;margin-top:6px;">Note: Aadhar ya kam se kam ek aur ID proof zaroori hai.</div>
-            <div class="btn-row"><button class="btn" onclick="switchAccTab('personal')">← Back</button><button class="btn btn-primary" onclick="switchAccTab('address')">Next: Address & Account →</button></div>
-          </div>
-        </div>
-
-        <!-- TAB 3: ADDRESS & ACCOUNT -->
-        <div class="acc-tab-content" id="acctab-address" style="display:none;">
-          <div class="card">
-            <div class="card-title">Address Proof & Communication Address</div>
-            <div class="three-col">
-              <div class="form-grp"><label>Address Proof Type</label>
-                <select id="m-addrprooftype"><option>Aadhar Card</option><option>Electricity Bill</option><option>Bank Statement</option><option>Mobile Bill</option><option>Existing Passbook</option></select>
-              </div>
-              <div class="form-grp"><label>Address Proof Upload</label><input type="file" id="m-addrproof-file" accept="image/*,.pdf"></div>
-              <div class="form-grp"><label>&nbsp;</label></div>
-            </div>
-            <div class="form-grp"><label>Address</label><input type="text" id="m-address" placeholder="House No., Street"></div>
-            <div class="three-col">
-              <div class="form-grp"><label>Village/Town</label><input type="text" id="m-village"></div>
-              <div class="form-grp"><label>Tehsil</label><input type="text" id="m-tehsil"></div>
-              <div class="form-grp"><label>District</label><input type="text" id="m-district"></div>
-            </div>
-            <div class="three-col">
-              <div class="form-grp"><label>State</label><input type="text" id="m-state" value="Rajasthan"></div>
-              <div class="form-grp"><label>PIN Code</label><input type="text" id="m-pin" maxlength="6"></div>
-              <div class="form-grp"><label>&nbsp;</label></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-title">Account Opening Details</div>
-            <div class="three-col">
-              <div class="form-grp"><label>Opening Amount (₹) *</label>
-                <select id="m-amount"><option value="3500">3,500</option><option value="5000">5,000</option><option value="7500">7,500</option><option value="10500">10,500</option></select>
-              </div>
-              <div class="form-grp"><label>Payment Mode</label><select id="m-paymode"><option>Cash</option><option>UPI</option><option>Cheque</option></select></div>
-              <div class="form-grp"><label>Branch</label><input type="text" id="m-branch-display" value="" disabled></div>
-            </div>
-            <div class="btn-row"><button class="btn" onclick="switchAccTab('kyc')">← Back</button><button class="btn btn-primary" onclick="switchAccTab('nominee')">Next: Nominee →</button></div>
-          </div>
-        </div>
-
-        <!-- TAB 4: NOMINEE -->
-        <div class="acc-tab-content" id="acctab-nominee" style="display:none;">
-          <div class="card">
-            <div class="card-title">Nominee Details</div>
-            <div class="three-col">
-              <div class="form-grp"><label>Nominee Name</label><input type="text" id="m-nom-name"></div>
-              <div class="form-grp"><label>Relationship</label>
-                <select id="m-nom-relation"><option>Spouse</option><option>Son</option><option>Daughter</option><option>Father</option><option>Mother</option><option>Brother</option><option>Sister</option><option>Other</option></select>
-              </div>
-              <div class="form-grp"><label>Nominee Date of Birth</label><input type="date" id="m-nom-dob"></div>
-            </div>
-            <div class="three-col">
-              <div class="form-grp"><label>Nominee Mobile</label><input type="text" id="m-nom-mobile" maxlength="10"></div>
-              <div class="form-grp"><label>Nominee Aadhar (Optional)</label><input type="text" id="m-nom-aadhar" maxlength="12"></div>
-              <div class="form-grp"><label>Nominee Photo Upload</label><input type="file" id="m-nom-photo-file" accept="image/*"></div>
-            </div>
-            <div class="btn-row"><button class="btn" onclick="switchAccTab('address')">← Back</button><button class="btn btn-primary" onclick="switchAccTab('crosssale')">Next: Cross-Sale →</button></div>
-          </div>
-        </div>
-
-        <!-- TAB 5: CROSS-SALE -->
-        <div class="acc-tab-content" id="acctab-crosssale" style="display:none;">
-          <div class="card">
-            <div class="card-title">Cross-Sale Products</div>
-            <div class="alert" style="background:#FFF0E6;color:#993C1D;padding:10px 14px;border-radius:6px;font-size:12px;margin-bottom:12px;">
-              Staff ke liye yeh products pitch karna MANDATORY hai. Customer Group/Life/Health Insurance lene se mana kar sakta hai, lekin Demat Account khulna hai.
-            </div>
-            <table style="width:100%;border-collapse:collapse;font-size:13px;">
-              <thead><tr style="text-align:left;border-bottom:1px solid #eee;"><th style="padding:8px;">Product</th><th style="padding:8px;">Customer Opted?</th><th style="padding:8px;">Decline Reason (if not opted)</th></tr></thead>
-              <tbody>
-                <tr style="border-bottom:1px solid #f5f5f5;">
-                  <td style="padding:8px;">Group Insurance</td>
-                  <td style="padding:8px;"><input type="checkbox" id="cs-group"></td>
-                  <td style="padding:8px;"><input type="text" id="cs-group-reason" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;font-size:12px;" placeholder="If declined, reason"></td>
-                </tr>
-                <tr style="border-bottom:1px solid #f5f5f5;">
-                  <td style="padding:8px;">Health Insurance</td>
-                  <td style="padding:8px;"><input type="checkbox" id="cs-health"></td>
-                  <td style="padding:8px;"><input type="text" id="cs-health-reason" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;font-size:12px;" placeholder="If declined, reason"></td>
-                </tr>
-                <tr style="border-bottom:1px solid #f5f5f5;">
-                  <td style="padding:8px;">Life Insurance</td>
-                  <td style="padding:8px;"><input type="checkbox" id="cs-life"></td>
-                  <td style="padding:8px;"><input type="text" id="cs-life-reason" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;font-size:12px;" placeholder="If declined, reason"></td>
-                </tr>
-                <tr>
-                  <td style="padding:8px;">Demat Account (Mandatory)</td>
-                  <td style="padding:8px;"><input type="checkbox" id="cs-demat" checked></td>
-                  <td style="padding:8px;color:#888;">Mandatory for all members</td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="form-grp" style="margin-top:14px;">
-              <label><input type="checkbox" id="cs-pitched-confirm"> Main (staff) confirm karta hoon ki maine sabhi 4 products customer ko pitch kiye hain.</label>
-            </div>
-            <div class="btn-row">
-              <button class="btn" onclick="switchAccTab('nominee')">← Back</button>
-              <button class="btn btn-orange" onclick="createAccount()">✓ Account Kholo</button>
-            </div>
-            <div id="acc-result"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="page" id="page-acclist">
-        <div class="card">
-          <div class="card-title">All Members</div>
-          <div class="three-col" style="margin-bottom:10px">
-            <div class="form-grp"><label>Search (Name / Mobile / Account No)</label><input type="text" id="member-search" oninput="searchMembers()" placeholder="Type to search..."></div>
-          </div>
-          <div id="member-table" class="loading">Loading...</div>
-          <div id="member-pagination" style="display:flex;gap:8px;justify-content:center;margin-top:12px"></div>
-        </div>
-      </div>
-
-      <div class="page" id="page-fd">
-        <div class="card">
-          <div class="card-title">New Fixed Deposit</div>
-          <div class="three-col">
-            <div class="form-grp"><label>Member Account No.</label><input type="text" id="fd-accno" placeholder="ASA-001"></div>
-            <div class="form-grp"><label>Amount (₹)</label><input type="number" id="fd-amount" value="50000"></div>
-            <div class="form-grp"><label>Tenure</label>
-              <select id="fd-tenure"><option value="1">1 Year - General 7.5% / Senior 8.5%</option><option value="3">3 Years - General 8.2% / Senior 8.7%</option><option value="5">5 Years - General 8.5% / Senior 9.0%</option></select>
-            </div>
-          </div>
-          <div class="form-grp"><label>Category</label><select id="fd-cat"><option value="general">General Citizen</option><option value="senior">Senior Citizen</option></select></div>
-          <div class="btn-row"><button class="btn btn-orange" onclick="createFD()">FD Kholo</button></div>
-          <div id="fd-result"></div>
-        </div>
-      </div>
-
-      <div class="page" id="page-rd">
-        <div class="card">
-          <div class="card-title">New Recurring Deposit</div>
-          <div class="three-col">
-            <div class="form-grp"><label>Member Account No.</label><input type="text" id="rd-accno" placeholder="ASA-001"></div>
-            <div class="form-grp"><label>Monthly Installment (₹)</label><input type="number" id="rd-amount" value="2000"></div>
-            <div class="form-grp"><label>Tenure (Months)</label><select id="rd-months"><option value="12">12</option><option value="24" selected>24</option><option value="36">36</option><option value="60">60</option></select></div>
-          </div>
-          <div class="form-grp"><label>Category</label><select id="rd-cat"><option value="8.2">General - 8.2%</option><option value="8.5">Girls - 8.5%</option><option value="9.5">Senior Citizen - 9.5%</option></select></div>
-          <div class="btn-row"><button class="btn btn-orange" onclick="createRD()">RD Kholo</button></div>
-          <div id="rd-result"></div>
-        </div>
-      </div>
-
-      <div class="page" id="page-td">
-        <div class="card">
-          <div class="card-title">New Term Deposit</div>
-          <div class="three-col">
-            <div class="form-grp"><label>Member Account No.</label><input type="text" id="td-accno" placeholder="ASA-001"></div>
-            <div class="form-grp"><label>Amount (₹)</label><input type="number" id="td-amount" value="25000"></div>
-            <div class="form-grp"><label>Tenure</label><select id="td-days"><option value="30">30 Days</option><option value="90">90 Days</option><option value="180" selected>180 Days</option><option value="365">365 Days</option></select></div>
-          </div>
-          <div class="form-grp"><label>Category</label><select id="td-cat"><option value="general">General</option><option value="girls">Girls</option><option value="senior">Senior Citizen</option></select></div>
-          <div class="btn-row"><button class="btn btn-orange" onclick="createTD()">TD Kholo</button></div>
-          <div id="td-result"></div>
-        </div>
-      </div>
-
-      <div class="page" id="page-loan">
-        <div class="card">
-          <div class="card-title">Step 1: Select Loan Category</div>
-          <div id="loan-cat-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-            <div class="loan-cat-card" data-cat="small_business" onclick="selectLoanCategory('small_business')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
-              <div style="font-size:13px;font-weight:500;">Chota Business Loan</div>
-              <div style="font-size:11px;color:#888;">₹5,000 - ₹50,000 · Interest Free</div>
-            </div>
-            <div class="loan-cat-card" data-cat="big_business" onclick="selectLoanCategory('big_business')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
-              <div style="font-size:13px;font-weight:500;">Bada Business Loan</div>
-              <div style="font-size:11px;color:#888;">₹1L - ₹10L · ROI 9.5%-14%</div>
-            </div>
-            <div class="loan-cat-card" data-cat="gold_loan" onclick="selectLoanCategory('gold_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
-              <div style="font-size:13px;font-weight:500;">Gold Loan</div>
-              <div style="font-size:11px;color:#888;">₹10,000 - ₹10L+ · 8 Schemes</div>
-            </div>
-            <div class="loan-cat-card" data-cat="silver_loan" onclick="selectLoanCategory('silver_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
-              <div style="font-size:13px;font-weight:500;">Silver Loan</div>
-              <div style="font-size:11px;color:#888;">45% of weight value</div>
-            </div>
-            <div class="loan-cat-card" data-cat="home_loan" onclick="selectLoanCategory('home_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
-              <div style="font-size:13px;font-weight:500;">Home Loan</div>
-              <div style="font-size:11px;color:#888;">₹2L - ₹20L · CIBIL based</div>
-            </div>
-            <div class="loan-cat-card" data-cat="shiksha_loan" onclick="selectLoanCategory('shiksha_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
-              <div style="font-size:13px;font-weight:500;">Saathi Shiksha Loan</div>
-              <div style="font-size:11px;color:#888;">₹1L - ₹10L · ROI 15%</div>
-            </div>
-            <div class="loan-cat-card" data-cat="group_loan" onclick="selectLoanCategory('group_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
-              <div style="font-size:13px;font-weight:500;">Group Loan</div>
-              <div style="font-size:11px;color:#888;">Min 7 members · ₹10K-1L each</div>
-            </div>
-            <div class="loan-cat-card" data-cat="fd_loan" onclick="selectLoanCategory('fd_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
-              <div style="font-size:13px;font-weight:500;">Loan Against FD</div>
-              <div style="font-size:11px;color:#888;">70% of deposit · ROI 12%</div>
-            </div>
-            <div class="loan-cat-card" data-cat="shaadi_loan" onclick="selectLoanCategory('shaadi_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
-              <div style="font-size:13px;font-weight:500;">Sukanya Shaadi Loan</div>
-              <div style="font-size:11px;color:#888;">₹50,000 - ₹3L</div>
-            </div>
-            <div class="loan-cat-card" data-cat="consumer_loan" onclick="selectLoanCategory('consumer_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
-              <div style="font-size:13px;font-weight:500;">Consumer Loan</div>
-              <div style="font-size:11px;color:#888;">₹5K - ₹5L · 70% financed</div>
-            </div>
-            <div class="loan-cat-card" data-cat="medical_emergency_loan" onclick="selectLoanCategory('medical_emergency_loan')" style="border:2px solid #eee;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
-              <div style="font-size:13px;font-weight:500;">Medical Emergency Loan</div>
-              <div style="font-size:11px;color:#888;">Up to ₹5L · 0.90%/month</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- DYNAMIC LOAN FORM (changes based on category) -->
-        <div class="card" id="loan-form-card" style="display:none;">
-          <div class="card-title" id="loan-form-title">Loan Details</div>
-          <div class="three-col">
-            <div class="form-grp">
-              <label>Member Account No. *</label>
-              <div style="display:flex;gap:6px;">
-                <input type="text" id="ln-accno" placeholder="ASA-001" oninput="debounceFetchMember()" style="flex:1;">
-              </div>
-            </div>
-            <div class="form-grp" id="ln-amount-wrapper"><label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()"></div>
-            <div class="form-grp" id="ln-extra-field-1"></div>
-          </div>
-
-          <!-- MEMBER INFO PANEL (auto-fetched on account no entry) -->
-          <div id="ln-member-info" style="display:none;background:var(--color-background-secondary,#f5f5f5);border-radius:8px;padding:10px 14px;margin-bottom:12px;">
-            <div style="display:flex;gap:12px;align-items:center;">
-              <div id="ln-member-photo" style="width:50px;height:50px;border-radius:6px;background:#ddd;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:10px;color:#888;">No Photo</div>
-              <div style="flex:1;font-size:12px;">
-                <div style="font-weight:600;font-size:13px;" id="ln-member-name">-</div>
-                <div style="color:#666;">Mobile: <span id="ln-member-mobile">-</span> &middot; KYC: <span id="ln-member-kyc">-</span> &middot; Balance: <span id="ln-member-balance">-</span></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="three-col" id="ln-extra-row-2"></div>
-
-          <!-- ITEM PHOTO UPLOAD (gold/silver only) -->
-          <div id="ln-item-photo-section" style="display:none;">
-            <div class="form-grp"><label>Item Photo (jewellery/item ki photo) *</label><input type="file" id="ln-item-photo-file" accept="image/*"></div>
-          </div>
-
-          <!-- GUARANTOR (gold loan only) -->
-          <div id="ln-guarantor-section">
-            <div class="form-grp"><label>Guarantor Name</label><input type="text" id="ln-guarantor"></div>
-            <div class="three-col">
-              <div class="form-grp"><label>Guarantor Mobile</label><input type="text" id="ln-guarantor-mobile"></div>
-              <div class="form-grp"><label>Guarantor Aadhar</label><input type="text" id="ln-guarantor-aadhar"></div>
-              <div class="form-grp"></div>
-            </div>
-          </div>
-
-          <!-- NOMINEE + CO-APPLICANT (all loans EXCEPT gold loan) -->
-          <div id="ln-nominee-coapplicant-section">
-            <div style="font-size:13px;font-weight:500;color:#0d2137;margin:10px 0 6px;">Nominee Details</div>
-            <div class="three-col">
-              <div class="form-grp"><label>Nominee Name</label><input type="text" id="ln-nominee-name"></div>
-              <div class="form-grp"><label>Relation</label>
-                <select id="ln-nominee-relation"><option>Spouse</option><option>Son</option><option>Daughter</option><option>Father</option><option>Mother</option><option>Other</option></select>
-              </div>
-              <div class="form-grp"><label>Mobile</label><input type="text" id="ln-nominee-mobile" maxlength="10"></div>
-            </div>
-            <div style="font-size:13px;font-weight:500;color:#0d2137;margin:10px 0 6px;">Co-Applicant Details (Optional)</div>
-            <div class="three-col">
-              <div class="form-grp"><label>Co-Applicant Name</label><input type="text" id="ln-coapp-name"></div>
-              <div class="form-grp"><label>Relation</label><input type="text" id="ln-coapp-relation"></div>
-              <div class="form-grp"><label>Mobile</label><input type="text" id="ln-coapp-mobile" maxlength="10"></div>
-            </div>
-            <div class="form-grp"><label>Co-Applicant Aadhar</label><input type="text" id="ln-coapp-aadhar" maxlength="12" style="max-width:300px;"></div>
-          </div>
-
-          <!-- GOLD LOAN: 5 SCHEME BOXES (highlight applicable one based on amount/carat) -->
-          <div id="ln-gold-scheme-boxes" style="display:none;margin-bottom:14px;">
-            <div style="font-size:13px;font-weight:500;color:#0d2137;margin-bottom:8px;">Gold Loan Schemes</div>
-            <div id="gold-scheme-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;"></div>
-          </div>
-
-          <div class="form-grp" style="margin-top:6px;">
-            <label><input type="checkbox" id="ln-health-insurance"> Health Insurance opt-in (mandatory pitch, customer can decline)</label>
-          </div>
-          <div class="form-grp">
-            <label><input type="checkbox" id="ln-auto-debit" checked> Auto-Debit EMI from savings account balance (jab automatic system ready hoga)</label>
-          </div>
-          <div id="loan-preview" class="success-msg">Amount aur details bharo, calculation yahan dikhega.</div>
-          <div class="btn-row">
-            <button class="btn" onclick="closeLoanForm()">← Category Badlo</button>
-            <button class="btn btn-orange" onclick="submitLoan()">Loan Submit Karo (Appraisal ke liye)</button>
-          </div>
-          <div id="loan-result"></div>
-        </div>
-      </div>
-
-      <div class="page" id="page-coll">
-        <div class="card">
-          <div class="card-title">Today's Collection</div>
-          <div id="collection-table" class="loading">Loading...</div>
-        </div>
-      </div>
-
-      <div class="page" id="page-loanlist">
-        <div class="card">
-          <div class="card-title">All Loans</div>
-          <div id="loan-table" class="loading">Loading...</div>
-          <div id="loan-pagination" style="display:flex;gap:8px;justify-content:center;margin-top:12px"></div>
-        </div>
-      </div>
-
-      <div class="page" id="page-approvals">
-        <div class="card">
-          <div class="card-title">Loans Pending Approval</div>
-          <div id="approval-table" class="loading">Loading...</div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-</div>
-
-<script>
-// ============================================================
-// SUPABASE CONFIGURATION - REPLACE WITH YOUR OWN VALUES
-// ============================================================
-const SUPABASE_URL = 'https://ytdtcwoinsojeautrwxk.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_MlFcSGPN8WdsQySyuIY2bw_DteL0cNH';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let currentUser = null;
-let currentBranchId = null;
-
-// ============================================================
-// LOGIN
-// ============================================================
-async function doLogin() {
-  const username = document.getElementById('login-username').value.trim();
-  const password = document.getElementById('login-password').value;
-  if (!username || !password) return;
-
-  const { data, error } = await db
-    .from('staff')
-    .select('*, branches(*)')
-    .eq('username', username)
-    .eq('password_hash', password)
-    .eq('is_active', true)
-    .maybeSingle();
-
-  if (error || !data) {
-    document.getElementById('login-error').style.display = 'block';
-    return;
-  }
-
-  currentUser = data;
-  currentBranchId = data.branch_id;
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app-screen').style.display = 'block';
-  document.getElementById('user-info').textContent = data.full_name + ' (' + data.role + ')';
-  loadDashboard();
-}
-
-function doLogout() {
-  currentUser = null;
-  document.getElementById('app-screen').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('login-username').value = '';
-  document.getElementById('login-password').value = '';
-}
-
-// ============================================================
-// NAVIGATION
-// ============================================================
-const pageTitles = { dash: 'Dashboard', acc: 'Account Opening', acclist: 'Member List', fd: 'Fixed Deposit', rd: 'Recurring Deposit', td: 'Term Deposit', loan: 'New Loan', coll: 'Daily Collection', loanlist: 'All Loans', approvals: 'Pending Approvals' };
-
-function goPage(id, el) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + id).classList.add('active');
-  el.classList.add('active');
-  document.getElementById('pg-title').textContent = pageTitles[id];
-  if (id === 'dash') loadDashboard();
-  if (id === 'acc') {
-    const branchEl = document.getElementById('m-branch-display');
-    if (branchEl) branchEl.value = currentUser.branches?.branch_name || 'Head Office';
-  }
-  if (id === 'acclist') loadMembers();
-  if (id === 'coll') loadCollections();
-  if (id === 'loanlist') loadLoans();
-  if (id === 'approvals') loadApprovals();
-}
-
-function fmt(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
-function genAccountNo() { return 'ASA-' + Math.floor(1000 + Math.random() * 9000); }
-function genVoucherNo() { return 'V-' + Date.now().toString().slice(-8); }
-
-// ============================================================
-// BRANCH LIST MODAL (clickable from Dashboard "All Branches")
-// ============================================================
-async function showBranchList() {
-  if (currentUser.role !== 'super_admin') return; // only head office sees branch list
-  document.getElementById('branch-modal').style.display = 'flex';
-  document.getElementById('branch-modal-body').innerHTML = '<div class="loading">Loading...</div>';
-
-  const { data: branches } = await db.from('branches').select('*').order('branch_code');
-  if (!branches || !branches.length) {
-    document.getElementById('branch-modal-body').innerHTML = '<p>Koi branch nahi mili</p>';
-    return;
-  }
-
-  // Get member and active loan counts per branch in parallel
-  const counts = await Promise.all(branches.map(async (b) => {
-    const [{ count: memberCount }, { count: loanCount }] = await Promise.all([
-      db.from('members').select('*', { count: 'exact', head: true }).eq('branch_id', b.id),
-      db.from('loans').select('*', { count: 'exact', head: true }).eq('branch_id', b.id).eq('status', 'active')
-    ]);
-    return { ...b, memberCount: memberCount || 0, loanCount: loanCount || 0 };
-  }));
-
-  let html = '<table><thead><tr><th>Code</th><th>Branch Name</th><th>District</th><th>Members</th><th>Active Loans</th></tr></thead><tbody>';
-  counts.forEach(b => {
-    html += `<tr style="cursor:pointer" onclick="showBranchDetail('${b.id}','${b.branch_name.replace(/'/g, "\\'")}')"><td>${b.branch_code}</td><td>${b.branch_name}</td><td>${b.district || '-'}</td><td>${b.memberCount}</td><td>${b.loanCount}</td></tr>`;
-  });
-  html += '</tbody></table>';
-  document.getElementById('branch-modal-body').innerHTML = html;
-}
-
-async function showBranchDetail(branchId, branchName) {
-  document.getElementById('branch-modal-body').innerHTML = '<div class="loading">Loading...</div>';
-
-  const [{ data: members }, { data: loans }] = await Promise.all([
-    db.from('members').select('*').eq('branch_id', branchId).order('opened_at', { ascending: false }).limit(50),
-    db.from('loans').select('*, members(first_name, last_name)').eq('branch_id', branchId).order('created_at', { ascending: false }).limit(50)
-  ]);
-
-  let html = `<button class="btn" onclick="showBranchList()" style="margin-bottom:12px;padding:5px 12px;">← Back to Branch List</button>`;
-  html += `<h3 style="font-size:14px;margin-bottom:10px;color:#222;">${branchName}</h3>`;
-
-  html += '<h4 style="font-size:12px;color:#666;margin:10px 0 6px;">Members</h4>';
-  html += '<table><thead><tr><th>Acc No</th><th>Name</th><th>Mobile</th><th>Type</th><th>Balance</th></tr></thead><tbody>';
-  if (members && members.length) {
-    members.forEach(m => {
-      html += `<tr><td>${m.account_no}</td><td>${m.first_name} ${m.last_name || ''}</td><td>${m.mobile_primary}</td><td>${m.account_type}</td><td>${fmt(m.current_balance)}</td></tr>`;
-    });
-  } else {
-    html += '<tr><td colspan="5">Koi member nahi mila is branch mein</td></tr>';
-  }
-  html += '</tbody></table>';
-
-  html += '<h4 style="font-size:12px;color:#666;margin:14px 0 6px;">Loans</h4>';
-  html += '<table><thead><tr><th>Loan No</th><th>Member</th><th>Category</th><th>Amount</th><th>Status</th></tr></thead><tbody>';
-  if (loans && loans.length) {
-    loans.forEach(l => {
-      const name = l.members ? `${l.members.first_name} ${l.members.last_name || ''}` : '-';
-      html += `<tr><td>${l.loan_no}</td><td>${name}</td><td>${l.category}</td><td>${fmt(l.loan_amount)}</td><td><span class="badge bg">${l.status}</span></td></tr>`;
-    });
-  } else {
-    html += '<tr><td colspan="5">Koi loan nahi mila is branch mein</td></tr>';
-  }
-  html += '</tbody></table>';
-
-  document.getElementById('branch-modal-body').innerHTML = html;
-}
-
-function closeBranchModal() {
-  document.getElementById('branch-modal').style.display = 'none';
-}
-
-// ============================================================
-// DASHBOARD
-// ============================================================
-async function loadDashboard() {
-  const isAdmin = currentUser.role === 'super_admin';
-  let memberQuery = db.from('members').select('*', { count: 'exact', head: true });
-  let loanQuery = db.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'active');
-  let fdQuery = db.from('fixed_deposits').select('*', { count: 'exact', head: true }).eq('status', 'active');
-
-  if (!isAdmin) {
-    memberQuery = memberQuery.eq('branch_id', currentBranchId);
-    loanQuery = loanQuery.eq('branch_id', currentBranchId);
-    fdQuery = fdQuery.eq('branch_id', currentBranchId);
-  }
-
-  const [{ count: memberCount }, { count: loanCount }, { count: fdCount }] = await Promise.all([memberQuery, loanQuery, fdQuery]);
-
-  document.getElementById('stat-members').textContent = memberCount || 0;
-  document.getElementById('stat-loans').textContent = loanCount || 0;
-  document.getElementById('stat-fds').textContent = fdCount || 0;
-  document.getElementById('stat-branch').textContent = isAdmin ? 'All Branches' : (currentUser.branches?.branch_name || '-');
-  document.getElementById('branch-click-hint').textContent = isAdmin ? 'Click to view list' : '';
-
-  let recentQuery = db.from('members').select('account_no, first_name, last_name, account_type, opened_at').order('opened_at', { ascending: false }).limit(5);
-  if (!isAdmin) recentQuery = recentQuery.eq('branch_id', currentBranchId);
-  const { data: recent } = await recentQuery;
-
-  let html = '<table><thead><tr><th>Acc No</th><th>Name</th><th>Type</th><th>Date</th></tr></thead><tbody>';
-  if (recent && recent.length) {
-    recent.forEach(m => {
-      html += `<tr><td>${m.account_no}</td><td>${m.first_name} ${m.last_name || ''}</td><td>${m.account_type}</td><td>${new Date(m.opened_at).toLocaleDateString('en-IN')}</td></tr>`;
-    });
-  } else {
-    html += '<tr><td colspan="4">Koi member nahi mila</td></tr>';
-  }
-  html += '</tbody></table>';
-  document.getElementById('recent-members').innerHTML = html;
-}
-
-// ============================================================
-// ACCOUNT OPENING
-// ============================================================
-// ============================================================
-// ACCOUNT OPENING - TAB NAVIGATION
-// ============================================================
-function switchAccTab(tabName) {
-  document.querySelectorAll('.acc-tab-content').forEach(el => el.style.display = 'none');
-  document.querySelectorAll('.acc-tab').forEach(el => {
-    el.classList.remove('active');
-    el.style.borderBottomColor = 'transparent';
-    el.style.color = '#888';
-  });
-  document.getElementById('acctab-' + tabName).style.display = 'block';
-  const activeTab = document.querySelector(`.acc-tab[data-tab="${tabName}"]`);
-  activeTab.classList.add('active');
-  activeTab.style.borderBottomColor = '#e65c00';
-  activeTab.style.color = '#0d2137';
-}
-
-function previewPhoto(input) {
-  const preview = document.getElementById('acc-photo-preview');
-  if (input.files && input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = e => { preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`; };
-    reader.readAsDataURL(input.files[0]);
-  }
-}
-
-// Upload a file to Supabase Storage, returns public URL or null
-async function uploadDoc(fileInputId, folderName) {
-  const input = document.getElementById(fileInputId);
-  if (!input || !input.files || !input.files[0]) return null;
-  const file = input.files[0];
-  const ext = file.name.split('.').pop();
-  const path = `${folderName}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-  const { error } = await db.storage.from('member-documents').upload(path, file);
-  if (error) { console.error('Upload error:', error); return null; }
-  const { data } = db.storage.from('member-documents').getPublicUrl(path);
-  return data.publicUrl;
-}
-
-async function createAccount() {
-  const fname = document.getElementById('m-fname').value.trim();
-  const mobile = document.getElementById('m-mobile').value.trim();
-  if (!fname || !mobile) { alert('Naam aur Mobile zaroori hai'); switchAccTab('personal'); return; }
-
-  const resultDiv = document.getElementById('acc-result');
-  resultDiv.innerHTML = '<div class="success-msg">Account ban raha hai, documents upload ho rahe hain...</div>';
-
-  const accountNo = genAccountNo();
-
-  // Upload all documents in parallel
-  const [photoUrl, aadharUrl, panUrl, voterIdUrl, dlUrl, addrProofUrl, nomPhotoUrl] = await Promise.all([
-    uploadDoc('m-photo-file', 'photos'),
-    uploadDoc('m-aadhar-file', 'aadhar'),
-    uploadDoc('m-pan-file', 'pan'),
-    uploadDoc('m-voterid-file', 'voterid'),
-    uploadDoc('m-dl-file', 'dl'),
-    uploadDoc('m-addrproof-file', 'address_proof'),
-    uploadDoc('m-nom-photo-file', 'nominee_photos')
-  ]);
-
-  const payload = {
-    account_no: accountNo,
-    branch_id: currentBranchId,
-    account_type: document.getElementById('m-acctype').value,
-    first_name: fname,
-    middle_name: document.getElementById('m-mname').value.trim(),
-    last_name: document.getElementById('m-lname').value.trim(),
-    father_husband_name: document.getElementById('m-father').value.trim(),
-    date_of_birth: document.getElementById('m-dob').value || null,
-    gender: document.getElementById('m-gender').value,
-    mobile_primary: mobile,
-    mobile_secondary: document.getElementById('m-mobile2').value.trim(),
-    email: document.getElementById('m-email').value.trim(),
-    occupation: document.getElementById('m-occupation').value,
-    monthly_income: parseFloat(document.getElementById('m-income').value),
-    photo_url: photoUrl,
-    aadhar_no: document.getElementById('m-aadhar').value.trim(),
-    aadhar_photo_url: aadharUrl,
-    pan_no: document.getElementById('m-pan').value.trim().toUpperCase(),
-    pan_photo_url: panUrl,
-    voter_id_no: document.getElementById('m-voterid').value.trim(),
-    voter_id_photo_url: voterIdUrl,
-    driving_license_no: document.getElementById('m-dl').value.trim(),
-    driving_license_photo_url: dlUrl,
-    address_proof_type: document.getElementById('m-addrprooftype').value,
-    address_proof_url: addrProofUrl,
-    address: document.getElementById('m-address').value.trim(),
-    village_town: document.getElementById('m-village').value.trim(),
-    tehsil: document.getElementById('m-tehsil').value.trim(),
-    district: document.getElementById('m-district').value.trim(),
-    state: document.getElementById('m-state').value.trim(),
-    pin_code: document.getElementById('m-pin').value.trim(),
-    opening_amount: parseFloat(document.getElementById('m-amount').value),
-    current_balance: parseFloat(document.getElementById('m-amount').value),
-    payment_mode: document.getElementById('m-paymode').value,
-    nominee_name: document.getElementById('m-nom-name').value.trim(),
-    nominee_relation: document.getElementById('m-nom-relation').value,
-    nominee_mobile: document.getElementById('m-nom-mobile').value.trim(),
-    nominee_dob: document.getElementById('m-nom-dob').value || null,
-    nominee_photo_url: nomPhotoUrl,
-    nominee_aadhar_no: document.getElementById('m-nom-aadhar').value.trim(),
-    cross_sale_group_insurance: document.getElementById('cs-group').checked,
-    cross_sale_health_insurance: document.getElementById('cs-health').checked,
-    cross_sale_life_insurance: document.getElementById('cs-life').checked,
-    cross_sale_demat: document.getElementById('cs-demat').checked,
-    cross_sale_pitched_by_staff: document.getElementById('cs-pitched-confirm').checked,
-    kyc_status: (aadharUrl || panUrl || voterIdUrl || dlUrl) ? 'partial' : 'pending',
-    opened_by: currentUser.id
-  };
-
-  const { error } = await db.from('members').insert(payload);
-  if (error) {
-    resultDiv.innerHTML = `<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Error: ${error.message}</div>`;
-  } else {
-    resultDiv.innerHTML = `<div class="success-msg">✅ Account khul gaya! Account No: <b>${accountNo}</b></div>`;
-    // Reset form
-    ['m-fname','m-mname','m-lname','m-father','m-mother','m-mobile','m-mobile2','m-email','m-aadhar','m-pan','m-voterid','m-dl','m-address','m-village','m-tehsil','m-district','m-pin','m-nom-name','m-nom-mobile','m-nom-aadhar'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
-    });
-    document.getElementById('m-state').value = 'Rajasthan';
-    document.getElementById('acc-photo-preview').innerHTML = 'No Photo';
-    switchAccTab('personal');
-  }
-}
-
-// ============================================================
-// MEMBER LIST - Paginated for large scale (50 lakh+ records)
-// ============================================================
-const PAGE_SIZE = 50;
-let currentMemberPage = 0;
-let memberSearchTerm = '';
-
-async function loadMembers(page = 0) {
-  currentMemberPage = page;
-  const isAdmin = currentUser.role === 'super_admin';
-  const from = page * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
-
-  let q = db.from('members').select('*', { count: 'exact' }).order('opened_at', { ascending: false }).range(from, to);
-  if (!isAdmin) q = q.eq('branch_id', currentBranchId);
-  if (memberSearchTerm) {
-    q = q.or(`first_name.ilike.%${memberSearchTerm}%,last_name.ilike.%${memberSearchTerm}%,mobile_primary.ilike.%${memberSearchTerm}%,account_no.ilike.%${memberSearchTerm}%`);
-  }
-
-  const { data, count, error } = await q;
-
-  let html = '<table><thead><tr><th>Acc No</th><th>Name</th><th>Mobile</th><th>Type</th><th>Balance</th><th>Status</th></tr></thead><tbody>';
-  if (data && data.length) {
-    data.forEach(m => {
-      html += `<tr><td>${m.account_no}</td><td>${m.first_name} ${m.last_name || ''}</td><td>${m.mobile_primary}</td><td>${m.account_type}</td><td>${fmt(m.current_balance)}</td><td><span class="badge bg">${m.status}</span></td></tr>`;
-    });
-  } else {
-    html += '<tr><td colspan="6">Koi member nahi mila</td></tr>';
-  }
-  html += '</tbody></table>';
-  document.getElementById('member-table').innerHTML = html;
-
-  // Pagination controls
-  const totalPages = Math.ceil((count || 0) / PAGE_SIZE);
-  let pagHtml = `<button class="btn" onclick="loadMembers(${Math.max(0, page - 1)})" ${page === 0 ? 'disabled' : ''}>Previous</button>`;
-  pagHtml += `<span style="padding:8px 12px;font-size:12px;color:#666">Page ${page + 1} of ${totalPages || 1} (${count || 0} total members)</span>`;
-  pagHtml += `<button class="btn" onclick="loadMembers(${page + 1})" ${page + 1 >= totalPages ? 'disabled' : ''}>Next</button>`;
-  document.getElementById('member-pagination').innerHTML = pagHtml;
-}
-
-let searchDebounce = null;
-function searchMembers() {
-  clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(() => {
-    memberSearchTerm = document.getElementById('member-search').value.trim();
-    loadMembers(0);
-  }, 400);
-}
-
-// ============================================================
-// FD / RD / TD
-// ============================================================
-const fdRateTable = { 1: { general: 7.5, senior: 8.5 }, 3: { general: 8.2, senior: 8.7 }, 5: { general: 8.5, senior: 9.0 } };
-const tdRateTable = {
-  30: { general: 4.5, girls: 6.5, senior: 7.0 },
-  90: { general: 5.0, girls: 6.5, senior: 8.0 },
-  180: { general: 5.5, girls: 6.5, senior: 9.0 },
-  365: { general: 6.0, girls: 6.5, senior: 10.5 }
-};
-
-async function findMemberByAccNo(accNo) {
-  const { data } = await db.from('members').select('id').eq('account_no', accNo.trim()).maybeSingle();
-  return data;
-}
-
-// Full member fetch for loan form display panel (photo, name, mobile, KYC, balance)
-let memberFetchTimer = null;
-function debounceFetchMember() {
-  clearTimeout(memberFetchTimer);
-  memberFetchTimer = setTimeout(fetchMemberForLoan, 500);
-}
-
-async function fetchMemberForLoan() {
-  const accNo = document.getElementById('ln-accno').value.trim();
-  const panel = document.getElementById('ln-member-info');
-  if (!accNo) { panel.style.display = 'none'; return; }
-
-  const { data } = await db.from('members').select('*').eq('account_no', accNo).maybeSingle();
-  if (!data) { panel.style.display = 'none'; return; }
-
-  panel.style.display = 'block';
-  document.getElementById('ln-member-name').textContent = `${data.first_name} ${data.last_name || ''}`;
-  document.getElementById('ln-member-mobile').textContent = data.mobile_primary || '-';
-  document.getElementById('ln-member-kyc').textContent = data.kyc_status || 'pending';
-  document.getElementById('ln-member-balance').textContent = fmt(data.current_balance || 0);
-  const photoEl = document.getElementById('ln-member-photo');
-  photoEl.innerHTML = data.photo_url
-    ? `<img src="${data.photo_url}" style="width:100%;height:100%;object-fit:cover;">`
-    : 'No Photo';
-}
-
-async function createFD() {
-  const accNo = document.getElementById('fd-accno').value;
-  const member = await findMemberByAccNo(accNo);
-  if (!member) { document.getElementById('fd-result').innerHTML = '<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Account number nahi mila</div>'; return; }
-
-  const amount = parseFloat(document.getElementById('fd-amount').value);
-  const years = parseInt(document.getElementById('fd-tenure').value);
-  const category = document.getElementById('fd-cat').value;
-  const rate = fdRateTable[years][category];
-  const startDate = new Date();
-  const maturityDate = new Date();
-  maturityDate.setFullYear(maturityDate.getFullYear() + years);
-  const maturityAmount = amount * Math.pow(1 + rate / (100 * 4), 4 * years);
-
-  const fdNo = 'FD-' + Math.floor(1000 + Math.random() * 9000);
-  const { error } = await db.from('fixed_deposits').insert({
-    fd_no: fdNo, member_id: member.id, branch_id: currentBranchId,
-    principal_amount: amount, tenure_years: years, category, interest_rate: rate,
-    start_date: startDate.toISOString().split('T')[0],
-    maturity_date: maturityDate.toISOString().split('T')[0],
-    maturity_amount: maturityAmount
-  });
-
-  document.getElementById('fd-result').innerHTML = error
-    ? `<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Error: ${error.message}</div>`
-    : `<div class="success-msg">FD khul gaya! FD No: <b>${fdNo}</b> | Rate: ${rate}% | Maturity: ${fmt(maturityAmount)}</div>`;
-}
-
-async function createRD() {
-  const accNo = document.getElementById('rd-accno').value;
-  const member = await findMemberByAccNo(accNo);
-  if (!member) { document.getElementById('rd-result').innerHTML = '<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Account number nahi mila</div>'; return; }
-
-  const monthly = parseFloat(document.getElementById('rd-amount').value);
-  const months = parseInt(document.getElementById('rd-months').value);
-  const rate = parseFloat(document.getElementById('rd-cat').value);
-  const category = rate === 8.2 ? 'general' : rate === 8.5 ? 'girls' : 'senior';
-  const startDate = new Date();
-  const maturityDate = new Date();
-  maturityDate.setMonth(maturityDate.getMonth() + months);
-
-  const rdNo = 'RD-' + Math.floor(1000 + Math.random() * 9000);
-  const { error } = await db.from('recurring_deposits').insert({
-    rd_no: rdNo, member_id: member.id, branch_id: currentBranchId,
-    monthly_installment: monthly, tenure_months: months, category, interest_rate: rate,
-    start_date: startDate.toISOString().split('T')[0],
-    maturity_date: maturityDate.toISOString().split('T')[0]
-  });
-
-  document.getElementById('rd-result').innerHTML = error
-    ? `<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Error: ${error.message}</div>`
-    : `<div class="success-msg">RD khul gaya! RD No: <b>${rdNo}</b> | Rate: ${rate}%</div>`;
-}
-
-async function createTD() {
-  const accNo = document.getElementById('td-accno').value;
-  const member = await findMemberByAccNo(accNo);
-  if (!member) { document.getElementById('td-result').innerHTML = '<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Account number nahi mila</div>'; return; }
-
-  const amount = parseFloat(document.getElementById('td-amount').value);
-  const days = parseInt(document.getElementById('td-days').value);
-  const category = document.getElementById('td-cat').value;
-  const rate = tdRateTable[days][category];
-  const startDate = new Date();
-  const maturityDate = new Date();
-  maturityDate.setDate(maturityDate.getDate() + days);
-  const interest = amount * rate * days / (100 * 365);
-  const maturityAmount = amount + interest;
-
-  const tdNo = 'TD-' + Math.floor(1000 + Math.random() * 9000);
-  const { error } = await db.from('term_deposits').insert({
-    td_no: tdNo, member_id: member.id, branch_id: currentBranchId,
-    deposit_amount: amount, tenure_days: days, category, interest_rate: rate,
-    start_date: startDate.toISOString().split('T')[0],
-    maturity_date: maturityDate.toISOString().split('T')[0],
-    maturity_amount: maturityAmount
-  });
-
-  document.getElementById('td-result').innerHTML = error
-    ? `<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Error: ${error.message}</div>`
-    : `<div class="success-msg">TD khul gaya! TD No: <b>${tdNo}</b> | Rate: ${rate}% | Maturity: ${fmt(maturityAmount)}</div>`;
-}
-
-// ============================================================
-// MULTI-CATEGORY LOAN SYSTEM
-// ============================================================
-let selectedLoanCategory = null;
-let cachedSchemes = {}; // category -> array of schemes
-let cachedMarketRate = { gold_loan: null, silver_loan: null, fetchedAt: null };
-
-// Standard gold fineness ratios (industry standard, India)
-const goldFinenessRatio = { 24: 1.0, 22: 0.916, 21: 0.875, 20: 0.833, 18: 0.75 };
-
-// Total deduction in grams per carat (0.5gm dust included) - confirmed values
-const caratDeductionTable = { 18: 0.9, 20: 1.9, 21: 2.4, 22: 2.9, 24: 0.5 };
-const SILVER_DUST_DEDUCTION = 0.5; // silver: only dust, no carat concept
-
-// Fetch today's manually-entered base rate (24K gold / pure silver) from database
-async function fetchMarketRate(category) {
-  const rateInput = document.getElementById('ln-market-rate');
-  if (rateInput) rateInput.value = 'Loading rate...';
-  try {
-    const { data } = await db.from('metal_rates').select('*').eq('metal_type', category === 'gold_loan' ? 'gold' : 'silver').order('rate_date', { ascending: false }).limit(1).maybeSingle();
-    if (data) {
-      cachedMarketRate[category] = data.rate_24k_or_pure_per_gram;
-      cachedMarketRate.fetchedAt = data.rate_date;
-      if (rateInput) rateInput.value = fmt(data.rate_24k_or_pure_per_gram) + '/gram (24K, as on ' + data.rate_date + ')';
-    } else {
-      if (rateInput) rateInput.value = 'Aaj ka rate set nahi hua - "Set Today\'s Rate" use karo';
-      cachedMarketRate[category] = null;
-    }
-    calcLoanPreview();
-  } catch (e) {
-    if (rateInput) rateInput.value = 'Rate load error';
-    console.error('Market rate fetch error:', e);
-  }
-}
-
-// Staff/Admin sets today's rate manually
-async function setTodaysMetalRate(category) {
-  const rateValue = prompt(`Aaj ka ${category === 'gold_loan' ? '24K Gold' : 'Pure Silver'} rate (₹ per gram) daalo:`);
-  if (!rateValue || isNaN(rateValue)) return;
-  const metalType = category === 'gold_loan' ? 'gold' : 'silver';
-  const today = new Date().toISOString().split('T')[0];
-  const { error } = await db.from('metal_rates').upsert({
-    metal_type: metalType, rate_date: today, rate_24k_or_pure_per_gram: parseFloat(rateValue), set_by: currentUser.id
-  }, { onConflict: 'metal_type,rate_date' });
-  if (error) { alert('Error: ' + error.message); return; }
-  await fetchMarketRate(category);
-}
-
-const categoryLabels = {
-  small_business: 'Chota Business Loan', big_business: 'Bada Business Loan',
-  gold_loan: 'Gold Loan', silver_loan: 'Silver Loan', home_loan: 'Home Loan',
-  shiksha_loan: 'Saathi Shiksha Loan', group_loan: 'Group Loan',
-  fd_loan: 'Loan Against FD', shaadi_loan: 'Sukanya Shaadi Loan',
-  consumer_loan: 'Consumer Loan', medical_emergency_loan: 'Medical Emergency Loan'
-};
-
-async function getSchemes(category) {
-  if (cachedSchemes[category]) return cachedSchemes[category];
-  const { data } = await db.from('loan_schemes').select('*').eq('category', category).order('display_order');
-  cachedSchemes[category] = data || [];
-  return cachedSchemes[category];
-}
-
-function selectLoanCategory(cat) {
-  selectedLoanCategory = cat;
-  document.querySelectorAll('.loan-cat-card').forEach(c => {
-    c.style.borderColor = c.dataset.cat === cat ? '#e65c00' : '#eee';
-    c.style.background = c.dataset.cat === cat ? '#FFF0E6' : '#fff';
-  });
-  document.getElementById('loan-form-card').style.display = 'block';
-  document.getElementById('loan-form-title').textContent = categoryLabels[cat] + ' - Application';
-
-  const extra1 = document.getElementById('ln-extra-field-1');
-  const extraRow2 = document.getElementById('ln-extra-row-2');
-  const amountWrapper = document.getElementById('ln-amount-wrapper');
-  const guarantorSection = document.getElementById('ln-guarantor-section');
-  const itemPhotoSection = document.getElementById('ln-item-photo-section');
-  const nomineeCoappSection = document.getElementById('ln-nominee-coapplicant-section');
-  extra1.innerHTML = ''; extraRow2.innerHTML = '';
-
-  // Gold Loan ONLY: guarantor instead of nominee/co-applicant. All other loans: nominee+co-applicant, no guarantor.
-  const isGoldOnly = (cat === 'gold_loan');
-  guarantorSection.style.display = isGoldOnly ? 'block' : 'none';
-  nomineeCoappSection.style.display = isGoldOnly ? 'none' : 'block';
-  // Item photo for gold/silver only
-  itemPhotoSection.style.display = (cat === 'gold_loan' || cat === 'silver_loan') ? 'block' : 'none';
-
-  if (cat === 'gold_loan' || cat === 'silver_loan') {
-    const isGold = cat === 'gold_loan';
-    amountWrapper.innerHTML = `<label>Loan Amount (₹) — Auto Calculated</label><input type="text" id="ln-amount" readonly style="background:#f5f5f5;font-weight:600;">`;
-
-    const jewelleryOptions = isGold
-      ? ['Necklace','Ring','Bangle','Chain','Earring','Bracelet','Coin','Other']
-      : ['Anklet (Payal)','Bangle','Chain','Coin','Utensil','Bar','Other'];
-
-    extra1.innerHTML = `<label>Jewellery Type *</label><select id="ln-jewellery-type" onchange="calcLoanPreview()">
-      ${jewelleryOptions.map(j => `<option value="${j}">${j}</option>`).join('')}
-    </select>`;
-
-    let caratDropdown = '';
-    if (isGold) {
-      caratDropdown = `<div class="form-grp"><label>Carat *</label><select id="ln-carat" onchange="calcLoanPreview()">
-        <option value="24">24 KT</option><option value="22" selected>22 KT</option><option value="21">21 KT</option><option value="20">20 KT</option><option value="18">18 KT</option>
-      </select></div>`;
-    }
-
-    extraRow2.innerHTML = `
-      <div class="form-grp"><label>Gross Weight (grams) *</label><input type="number" id="ln-weight" step="0.01" oninput="calcLoanPreview()"></div>
-      ${caratDropdown}
-      <div class="form-grp" id="ln-rate-display"><label>Today's 24K/Pure Rate (₹/gram)</label><div style="display:flex;gap:6px;"><input type="text" id="ln-market-rate" readonly style="background:#f5f5f5;flex:1;"><button type="button" class="btn" style="padding:6px 10px;font-size:11px;white-space:nowrap;" onclick="setTodaysMetalRate(selectedLoanCategory)">Set Rate</button></div></div>
-    `;
-    fetchMarketRate(cat);
-  } else if (cat === 'home_loan') {
-    amountWrapper.innerHTML = `<label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
-    extra1.innerHTML = `<label>CIBIL Score *</label><input type="number" id="ln-cibil" min="300" max="900" oninput="calcLoanPreview()">`;
-    extraRow2.innerHTML = `<div class="form-grp"><label>Property Value (₹)</label><input type="number" id="ln-propvalue" oninput="calcLoanPreview()"></div>
-      <div class="form-grp"><label>Property Address</label><input type="text" id="ln-propaddress"></div>
-      <div class="form-grp"><label>Tenure</label><select id="ln-tenure-yrs"><option value="5">5 Years</option><option value="7">7 Years</option></select></div>`;
-  } else if (cat === 'group_loan') {
-    amountWrapper.innerHTML = `<label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
-    extra1.innerHTML = `<label>Group Name *</label><input type="text" id="ln-groupname">`;
-    extraRow2.innerHTML = `<div class="form-grp"><label>Number of Members (min 7) *</label><input type="number" id="ln-groupcount" min="7" value="7"></div>
-      <div class="form-grp"></div><div class="form-grp"></div>`;
-  } else if (cat === 'fd_loan') {
-    amountWrapper.innerHTML = `<label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
-    extra1.innerHTML = `<label>Linked FD Number *</label><input type="text" id="ln-fdno" placeholder="FD-1234" oninput="calcLoanPreview()">`;
-  } else if (cat === 'shaadi_loan') {
-    amountWrapper.innerHTML = `<label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
-    extra1.innerHTML = `<label>Security Document Type *</label><select id="ln-securitytype"><option value="home_paper">Home Paper</option><option value="shop_paper">Shop Paper</option></select>`;
-  } else if (cat === 'consumer_loan') {
-    amountWrapper.innerHTML = `<label>Total Item/Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
-    extra1.innerHTML = `<label>Item/Purpose Description</label><input type="text" id="ln-itempurpose" placeholder="e.g. TV, Fridge, Furniture">`;
-  } else if (cat === 'medical_emergency_loan') {
-    amountWrapper.innerHTML = `<label>Loan Amount (₹, max ₹5,00,000) *</label><input type="number" id="ln-amount" max="500000" oninput="calcLoanPreview()">`;
-    extra1.innerHTML = `<label>Medical Reason</label><input type="text" id="ln-medicalreason" placeholder="e.g. Surgery, Hospitalization">`;
-  } else {
-    amountWrapper.innerHTML = `<label>Loan Amount (₹) *</label><input type="number" id="ln-amount" oninput="calcLoanPreview()">`;
-  }
-
-  document.getElementById('loan-preview').textContent = 'Amount aur details bharo, calculation yahan dikhega.';
-  document.getElementById('loan-result').innerHTML = '';
-  document.getElementById('loan-form-card').scrollIntoView({ behavior: 'smooth' });
-}
-
-function closeLoanForm() {
-  selectedLoanCategory = null;
-  document.getElementById('loan-form-card').style.display = 'none';
-  document.querySelectorAll('.loan-cat-card').forEach(c => { c.style.borderColor = '#eee'; c.style.background = '#fff'; });
-}
-
-async function calcLoanPreview() {
-  // Gold/Silver loans: amount is DERIVED from weight+carat+rate, not user-entered
-  if (selectedLoanCategory === 'gold_loan' || selectedLoanCategory === 'silver_loan') {
-    await calcGoldSilverPreview();
-    return;
-  }
-
-  const amount = parseFloat(document.getElementById('ln-amount').value) || 0;
-  const previewEl = document.getElementById('loan-preview');
-  if (!amount || !selectedLoanCategory) { previewEl.textContent = 'Amount aur details bharo.'; return; }
-
-  let html = '';
-
-  if (selectedLoanCategory === 'small_business') {
-    const pf = amount * 0.015;
-    html = `Daily Collection: <b>${fmt(amount/100)}</b> for 100 days &middot; Interest FREE &middot; PF: ${fmt(pf)} (1.5% flat) &middot; Miss penalty: ₹50/missed EMI (multiplies per miss)`;
-  }
-  else if (selectedLoanCategory === 'big_business') {
-    const schemes = await getSchemes('big_business');
-    const s = schemes[0];
-    const pf = amount * (s.pf_percent/100);
-    html = `Tenure: 5 years &middot; ROI: <b>${s.base_annual_rate_min}% - ${s.base_annual_rate_max}%</b> (depends on profile) &middot; PF: ${fmt(pf)} (2% of disbursement) &middot; Miss penalty: +1.2% added to interest rate`;
-  }
-  else if (selectedLoanCategory === 'gold_loan' || selectedLoanCategory === 'silver_loan') {
-    // handled by calcGoldSilverPreview(), unreachable here
-  }
-  else if (selectedLoanCategory === 'home_loan') {
-    const schemes = await getSchemes('home_loan');
-    const scheme = amount <= 1000000 ? schemes[0] : schemes[1];
-    const pf = amount * (scheme.pf_percent/100);
-    const tenure = document.getElementById('ln-tenure-yrs')?.value || 5;
-    const cibil = document.getElementById('ln-cibil')?.value;
-    html = `ROI Range: <b>${scheme.base_annual_rate_min}% - ${scheme.base_annual_rate_max}%</b> (final rate depends on CIBIL) &middot; Tenure: ${tenure} years &middot; PF: ${fmt(pf)} (2.5% flat, login) &middot; Disbursed: up to 85% of property value (for 10L+) &middot; Stamp/document charges paid by customer`;
-    if (amount > 700000) html += ` &middot; <span style="color:#854F0B">⚠ Exceeds BM approval limit (₹7L) — Head Office approval required</span>`;
-  }
-  else if (selectedLoanCategory === 'shiksha_loan') {
-    const schemes = await getSchemes('shiksha_loan');
-    const s = schemes[0];
-    html = `ROI: <b>${s.base_annual_rate_min}%</b> &middot; EMI paid monthly (auto-calculated) &middot; Miss penalty: rate increases to <b>17%</b>`;
-  }
-  else if (selectedLoanCategory === 'group_loan') {
-    const schemes = await getSchemes('group_loan');
-    const s = schemes[0];
-    const pf = amount * (s.pf_percent/100);
-    const groupCount = document.getElementById('ln-groupcount')?.value || 7;
-    html = `ROI: <b>${s.base_annual_rate_min}% - ${s.base_annual_rate_max}%</b> &middot; Tenure: 365 days &middot; PF: ${fmt(pf)} (3% flat on disbursed amount) &middot; Group size: ${groupCount} members &middot; <span style="color:#A32D2D">⚠ Any member miss = penalty (+1.5%) applies to WHOLE group</span>`;
-  }
-  else if (selectedLoanCategory === 'fd_loan') {
-    const fdNo = document.getElementById('ln-fdno')?.value;
-    html = `Loan eligible: <b>70% of FD deposit amount</b> &middot; ROI: <b>12%</b> &middot; Linked FD: ${fdNo || '(enter FD number)'}`;
-  }
-  else if (selectedLoanCategory === 'shaadi_loan') {
-    html = `Amount Range: ₹50,000 - ₹3,00,000 &middot; Against: Home/Shop paper security &middot; Nominee required`;
-  }
-  else if (selectedLoanCategory === 'consumer_loan') {
-    const schemes = await getSchemes('consumer_loan');
-    const s = schemes[0];
-    const financedAmount = amount * 0.70;
-    const customerShare = amount * 0.30;
-    const pf = financedAmount * (s.pf_percent / 100);
-    html = `Total Item Value: <b>${fmt(amount)}</b> &middot; Society Finances (70%): <b>${fmt(financedAmount)}</b> &middot; Customer Pays (30%): <b>${fmt(customerShare)}</b> &middot; PF: ${fmt(pf)} (1.5% of disbursed)`;
-  }
-  else if (selectedLoanCategory === 'medical_emergency_loan') {
-    const schemes = await getSchemes('medical_emergency_loan');
-    const s = schemes[0];
-    if (amount > 500000) {
-      html = `<span style="color:#A32D2D">⚠ Maximum limit ₹5,00,000 hai, amount kam karo</span>`;
-    } else {
-      const pf = amount * (s.pf_percent / 100);
-      html = `Monthly Rate: <b>${s.base_monthly_rate}%</b> &middot; PF: ${fmt(pf)} (3% flat) &middot; Max Limit: ₹5,00,000`;
-    }
-  }
-
-  previewEl.innerHTML = html;
-}
-
-// ============================================================
-// GOLD/SILVER LOAN: Auto-calculation engine
-// Net Weight = Gross Weight - Total Deduction (carat-based for gold, fixed dust for silver)
-// Loan Amount = Net Weight x Live Market Rate (per gram, already adjusted -₹4000 from spot)
-// ============================================================
-// Linear interpolation: rate at 24kt = rate_24kt (lowest), rate at 18kt = rate_18kt (highest)
-function caratInterestRate(carat, rate24kt, rate18kt) {
-  const frac = (24 - carat) / (24 - 18); // 0 at 24kt, 1 at 18kt
-  return rate24kt + frac * (rate18kt - rate24kt);
-}
-
-async function calcGoldSilverPreview() {
-  const previewEl = document.getElementById('loan-preview');
-  const weight = parseFloat(document.getElementById('ln-weight')?.value) || 0;
-  const baseRate24kt = cachedMarketRate[selectedLoanCategory]; // this is the 24KT rate
-  const goldBoxesWrapper = document.getElementById('ln-gold-scheme-boxes');
-
-  if (!weight) {
-    previewEl.textContent = 'Gross weight bharo calculation dekhne ke liye.';
-    document.getElementById('ln-amount').value = '';
-    if (goldBoxesWrapper) goldBoxesWrapper.style.display = 'none';
-    return;
-  }
-  if (!baseRate24kt) {
-    previewEl.textContent = 'Live market rate load ho raha hai, thoda wait karo...';
-    return;
-  }
-
-  let totalDeduction, deductionNote, carat, rate;
-  if (selectedLoanCategory === 'gold_loan') {
-    carat = parseInt(document.getElementById('ln-carat')?.value) || 22;
-    totalDeduction = caratDeductionTable[carat];
-    deductionNote = `${carat}KT carat deduction (incl. dust): ${totalDeduction}gm`;
-    // Per-gram rate scales with purity: rate(carat) = rate(24kt) * carat/24
-    rate = baseRate24kt * goldFinenessRatio[carat];
-  } else {
-    totalDeduction = SILVER_DUST_DEDUCTION;
-    deductionNote = `Dust deduction (fixed): ${totalDeduction}gm`;
-    rate = baseRate24kt; // silver has no carat concept
-  }
-
-  const netWeight = Math.max(0, weight - totalDeduction);
-  const loanAmount = netWeight * rate;
-  document.getElementById('ln-amount').value = Math.round(loanAmount);
-
-  // Force-refresh schemes cache to avoid stale old-schema data
-  delete cachedSchemes[selectedLoanCategory];
-  const schemes = await getSchemes(selectedLoanCategory);
-
-  if (selectedLoanCategory === 'gold_loan') {
-    // Render all 5 scheme boxes, highlight the applicable one
-    if (goldBoxesWrapper) {
-      goldBoxesWrapper.style.display = 'block';
-      const grid = document.getElementById('gold-scheme-grid');
-      grid.innerHTML = schemes.map(s => {
-        const isApplicable = loanAmount >= s.amount_min && loanAmount <= s.amount_max;
-        const schemeRate = caratInterestRate(carat, s.rate_24kt, s.rate_18kt);
-        const schemePerGramRate = baseRate24kt * goldFinenessRatio[carat];
-        const pfDisplay = s.pf_type === 'percent' ? `${s.pf_percent}% of loan` : `₹${s.pf_flat_per_gram}/gram`;
-        return `<div style="border:2px solid ${isApplicable ? '#e65c00' : '#eee'};background:${isApplicable ? '#FFF0E6' : '#fafafa'};border-radius:8px;padding:10px;font-size:11px;">
-          <div style="font-weight:600;font-size:12px;color:#0d2137;margin-bottom:4px;">${s.scheme_name}</div>
-          <div>Per Gram Rate: <b>${fmt(schemePerGramRate)}</b></div>
-          <div>ROI: <b>${schemeRate.toFixed(3)}%/month</b> (at ${carat}KT)</div>
-          <div>PF: <b>${pfDisplay}</b></div>
-          <div>Tenure: <b>${s.tenure_months} months</b> ${s.renewal_mandatory ? '(Renewal Mandatory)' : ''}</div>
-          ${isApplicable ? '<div style="color:#e65c00;font-weight:600;margin-top:4px;">✓ Applicable</div>' : ''}
-        </div>`;
-      }).join('');
-    }
-
-    const scheme = schemes.find(s => loanAmount >= s.amount_min && loanAmount <= s.amount_max) || schemes[schemes.length - 1];
-    if (scheme) {
-      const schemeRate = caratInterestRate(carat, scheme.rate_24kt, scheme.rate_18kt);
-      const pf = scheme.pf_type === 'percent' ? loanAmount * (scheme.pf_percent / 100) : netWeight * scheme.pf_flat_per_gram;
-      previewEl.innerHTML = `Gross Weight: <b>${weight}gm</b> &middot; ${deductionNote} &middot; Net Weight: <b>${netWeight.toFixed(2)}gm</b> &middot; Rate (${carat}KT): ${fmt(rate)}/gm &middot; <b>Loan Amount: ${fmt(loanAmount)}</b>
-        <br>Scheme: <b>${scheme.scheme_name}</b> &middot; ROI: <b>${schemeRate.toFixed(3)}%/month</b> &middot; PF: ${fmt(pf)} &middot; Grace: ${scheme.grace_period_days} din &middot; Miss hone par: +${scheme.late_rate_step}%/month (3 month tak) &middot; <span style="color:#A32D2D">Month 4: Notice &middot; Month 5: Auction (agar unpaid)</span>`;
-    }
-  } else {
-    if (goldBoxesWrapper) goldBoxesWrapper.style.display = 'none';
-    const s = schemes[0];
-    if (s) {
-      const pf = loanAmount * (s.pf_percent / 100);
-      previewEl.innerHTML = `Gross Weight: <b>${weight}gm</b> &middot; ${deductionNote} &middot; Net Weight: <b>${netWeight.toFixed(2)}gm</b> &middot; Rate: ${fmt(rate)}/gm &middot; <b>Loan Amount: ${fmt(loanAmount)}</b>
-        <br>Monthly Rate: <b>${s.base_monthly_rate}%</b> &middot; Tenure: ${s.tenure_days} days &middot; PF: ${fmt(pf)} (2.5% flat)`;
-    }
-  }
-}
-
-async function submitLoan() {
-  const accNo = document.getElementById('ln-accno').value;
-  const member = await findMemberByAccNo(accNo);
-  if (!member) { document.getElementById('loan-result').innerHTML = '<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Account number nahi mila</div>'; return; }
-
-  const amount = parseFloat(document.getElementById('ln-amount').value) || 0;
-  if (!amount) { alert('Loan amount bharo'); return; }
-
-  const loanNo = 'LN-' + Math.floor(1000 + Math.random() * 9000);
-  const requiresHO = amount > 700000; // BM approval limit
-  let dailyCollection = null, tenureDays = null, tenureYears = null, pfAmount = 0, interestRate = null;
-
-  if (selectedLoanCategory === 'small_business') {
-    dailyCollection = amount / 100; tenureDays = 100; pfAmount = amount * 0.015; interestRate = 0;
-  } else if (selectedLoanCategory === 'big_business') {
-    const schemes = await getSchemes('big_business'); pfAmount = amount * (schemes[0].pf_percent/100); tenureYears = 5; interestRate = schemes[0].base_annual_rate_min;
-  } else if (selectedLoanCategory === 'gold_loan') {
-    delete cachedSchemes['gold_loan'];
-    const schemes = await getSchemes('gold_loan');
-    const scheme = schemes.find(s => amount >= s.amount_min && amount <= s.amount_max);
-    const carat = parseInt(document.getElementById('ln-carat')?.value) || 22;
-    const netWeight = parseFloat(document.getElementById('ln-weight')?.value) - caratDeductionTable[carat];
-    if (scheme) {
-      interestRate = caratInterestRate(carat, scheme.rate_24kt, scheme.rate_18kt);
-      pfAmount = scheme.pf_type === 'percent' ? amount * (scheme.pf_percent/100) : netWeight * scheme.pf_flat_per_gram;
-      tenureDays = scheme.tenure_months * 30;
-    }
-  } else if (selectedLoanCategory === 'silver_loan') {
-    const schemes = await getSchemes('silver_loan'); pfAmount = amount * (schemes[0].pf_percent/100); tenureDays = schemes[0].tenure_days; interestRate = schemes[0].base_monthly_rate;
-  } else if (selectedLoanCategory === 'home_loan') {
-    const schemes = await getSchemes('home_loan');
-    const scheme = amount <= 1000000 ? schemes[0] : schemes[1];
-    pfAmount = amount * (scheme.pf_percent/100); tenureYears = parseInt(document.getElementById('ln-tenure-yrs')?.value || 5); interestRate = scheme.base_annual_rate_min;
-  } else if (selectedLoanCategory === 'shiksha_loan') {
-    const schemes = await getSchemes('shiksha_loan'); interestRate = schemes[0].base_annual_rate_min;
-  } else if (selectedLoanCategory === 'group_loan') {
-    const schemes = await getSchemes('group_loan'); pfAmount = amount * (schemes[0].pf_percent/100); tenureDays = 365; interestRate = schemes[0].base_annual_rate_min;
-  } else if (selectedLoanCategory === 'fd_loan') {
-    interestRate = 12;
-  } else if (selectedLoanCategory === 'shaadi_loan') {
-    interestRate = 0;
-  } else if (selectedLoanCategory === 'consumer_loan') {
-    const schemes = await getSchemes('consumer_loan');
-    pfAmount = (amount * 0.70) * (schemes[0].pf_percent/100); interestRate = 0;
-  } else if (selectedLoanCategory === 'medical_emergency_loan') {
-    const schemes = await getSchemes('medical_emergency_loan');
-    pfAmount = amount * (schemes[0].pf_percent/100); interestRate = schemes[0].base_monthly_rate;
-  }
-
-  // Upload item photo if present (gold/silver loans)
-  let itemPhotoUrl = null;
-  const itemPhotoInput = document.getElementById('ln-item-photo-file');
-  if (itemPhotoInput && itemPhotoInput.files && itemPhotoInput.files[0]) {
-    const file = itemPhotoInput.files[0];
-    const path = `loan_items/${Date.now()}_${Math.random().toString(36).slice(2)}.${file.name.split('.').pop()}`;
-    const { error: uploadErr } = await db.storage.from('member-documents').upload(path, file);
-    if (!uploadErr) {
-      const { data: urlData } = db.storage.from('member-documents').getPublicUrl(path);
-      itemPhotoUrl = urlData.publicUrl;
-    }
-  }
-
-  const payload = {
-    loan_no: loanNo, member_id: member.id, branch_id: currentBranchId,
-    category: selectedLoanCategory, loan_amount: amount,
-    interest_rate: interestRate, tenure_days: tenureDays, tenure_years: tenureYears,
-    base_interest_rate: interestRate, current_interest_rate: interestRate,
-    pf_amount: pfAmount,
-    item_weight_grams: parseFloat(document.getElementById('ln-weight')?.value) || null,
-    item_purity: document.getElementById('ln-carat')?.value ? document.getElementById('ln-carat').value + 'KT' : null,
-    item_description: document.getElementById('ln-jewellery-type')?.value || document.getElementById('ln-itempurpose')?.value || document.getElementById('ln-medicalreason')?.value || null,
-    item_photo_url: itemPhotoUrl,
-    cibil_score: parseInt(document.getElementById('ln-cibil')?.value) || null,
-    property_value: parseFloat(document.getElementById('ln-propvalue')?.value) || null,
-    property_address: document.getElementById('ln-propaddress')?.value || null,
-    group_name: document.getElementById('ln-groupname')?.value || null,
-    group_member_count: parseInt(document.getElementById('ln-groupcount')?.value) || null,
-    security_document_type: document.getElementById('ln-securitytype')?.value || null,
-    guarantor_name: document.getElementById('ln-guarantor').value,
-    guarantor_mobile: document.getElementById('ln-guarantor-mobile').value,
-    guarantor_aadhar: document.getElementById('ln-guarantor-aadhar').value,
-    loan_nominee_name: document.getElementById('ln-nominee-name')?.value || null,
-    loan_nominee_relation: document.getElementById('ln-nominee-relation')?.value || null,
-    loan_nominee_mobile: document.getElementById('ln-nominee-mobile')?.value || null,
-    co_applicant_name: document.getElementById('ln-coapp-name')?.value || null,
-    co_applicant_relation: document.getElementById('ln-coapp-relation')?.value || null,
-    co_applicant_mobile: document.getElementById('ln-coapp-mobile')?.value || null,
-    co_applicant_aadhar: document.getElementById('ln-coapp-aadhar')?.value || null,
-    auto_debit_enabled: document.getElementById('ln-auto-debit')?.checked || false,
-    health_insurance_opted: document.getElementById('ln-health-insurance').checked,
-    requires_head_office: requiresHO,
-    bm_approval_status: 'pending',
-    head_office_approval_status: requiresHO ? 'pending' : 'not_required',
-    start_date: new Date().toISOString().split('T')[0],
-    status: 'pending_bm',
-    appraised_by: currentUser.id
-  };
-
-  const { data: loanData, error } = await db.from('loans').insert(payload).select().single();
-
-  if (error) {
-    document.getElementById('loan-result').innerHTML = `<div class="success-msg" style="background:#FCEBEB;color:#A32D2D">Error: ${error.message}</div>`;
-    return;
-  }
-
-  // For small_business (100-day loan), generate daily collection schedule immediately
-  if (selectedLoanCategory === 'small_business') {
-    const collections = [];
-    const startDate = new Date();
-    for (let day = 1; day <= 100; day++) {
-      const collDate = new Date(startDate);
-      collDate.setDate(collDate.getDate() + day - 1);
-      collections.push({ loan_id: loanData.id, day_number: day, collection_date: collDate.toISOString().split('T')[0], amount_due: dailyCollection });
-    }
-    await db.from('loan_collections').insert(collections);
-  }
-
-  document.getElementById('loan-result').innerHTML = `<div class="success-msg">✅ Loan submitted! Loan No: <b>${loanNo}</b> &middot; Status: Pending BM Approval${requiresHO ? ' → Head Office Approval bhi chahiye hoga (amount > ₹7L)' : ''}
-    <br><button class="btn btn-primary" style="margin-top:8px;" onclick="printLoanReceipt('${loanData.id}')">🖨️ Print Receipt</button></div>`;
-  document.getElementById('ln-amount').value = '';
-  document.getElementById('ln-accno').value = '';
-}
-
-// ============================================================
-// PRINT LOAN RECEIPT (browser print dialog, with item photo + full details)
-// ============================================================
-async function printLoanReceipt(loanId) {
-  const { data: loan } = await db.from('loans').select('*, members(*), branches(branch_name, branch_code)').eq('id', loanId).single();
-  if (!loan) { alert('Loan details nahi mile'); return; }
-
-  const m = loan.members || {};
-  const catLabel = categoryLabels[loan.category] || loan.category;
-
-  const printWindow = window.open('', '_blank');
-  printWindow.document.write(`
-    <html><head><title>Loan Receipt - ${loan.loan_no}</title>
-    <style>
-      body { font-family: Arial, sans-serif; padding: 30px; color: #222; }
-      h1 { color: #0d2137; font-size: 20px; margin-bottom: 2px; }
-      .sub { color: #888; font-size: 12px; margin-bottom: 20px; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-      td { padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 13px; }
-      td.label { color: #666; width: 40%; }
-      .section-title { background: #0d2137; color: #fff; padding: 6px 10px; font-size: 13px; margin: 16px 0 6px; }
-      img.item-photo { max-width: 200px; border-radius: 6px; margin-top: 10px; }
-      .sign-row { display: flex; justify-content: space-between; margin-top: 50px; }
-      .sign-box { text-align: center; font-size: 12px; }
-      .sign-box .line { border-top: 1px solid #333; width: 180px; margin-bottom: 4px; }
-    </style>
-    </head><body>
-      <h1>ASA Cooperative Society</h1>
-      <div class="sub">Loan Application Receipt &middot; ${loan.branches?.branch_name || ''} (${loan.branches?.branch_code || ''})</div>
-
-      <div class="section-title">Loan Details</div>
-      <table>
-        <tr><td class="label">Loan No.</td><td>${loan.loan_no}</td></tr>
-        <tr><td class="label">Category</td><td>${catLabel}</td></tr>
-        <tr><td class="label">Loan Amount</td><td>${fmt(loan.loan_amount)}</td></tr>
-        <tr><td class="label">Interest Rate</td><td>${loan.interest_rate != null ? loan.interest_rate + '%' : '-'}</td></tr>
-        <tr><td class="label">PF Amount</td><td>${fmt(loan.pf_amount || 0)}</td></tr>
-        <tr><td class="label">Start Date</td><td>${loan.start_date}</td></tr>
-        <tr><td class="label">Status</td><td>${loan.status}</td></tr>
-      </table>
-
-      <div class="section-title">Member Details (KYC)</div>
-      <table>
-        <tr><td class="label">Name</td><td>${m.first_name || ''} ${m.last_name || ''}</td></tr>
-        <tr><td class="label">Account No.</td><td>${m.account_no || ''}</td></tr>
-        <tr><td class="label">Mobile</td><td>${m.mobile_primary || ''}</td></tr>
-        <tr><td class="label">Aadhar No.</td><td>${m.aadhar_no || '-'}</td></tr>
-        <tr><td class="label">PAN No.</td><td>${m.pan_no || '-'}</td></tr>
-        <tr><td class="label">Address</td><td>${m.address || ''}, ${m.district || ''}, ${m.state || ''}</td></tr>
-      </table>
-
-      ${loan.item_description || loan.item_weight_grams ? `
-      <div class="section-title">Item Details</div>
-      <table>
-        ${loan.item_description ? `<tr><td class="label">Item</td><td>${loan.item_description}</td></tr>` : ''}
-        ${loan.item_weight_grams ? `<tr><td class="label">Weight</td><td>${loan.item_weight_grams}gm</td></tr>` : ''}
-        ${loan.item_purity ? `<tr><td class="label">Purity</td><td>${loan.item_purity}</td></tr>` : ''}
-      </table>
-      ${loan.item_photo_url ? `<img class="item-photo" src="${loan.item_photo_url}">` : ''}
-      ` : ''}
-
-      ${loan.loan_nominee_name ? `
-      <div class="section-title">Nominee</div>
-      <table><tr><td class="label">Name</td><td>${loan.loan_nominee_name} (${loan.loan_nominee_relation || ''})</td></tr></table>
-      ` : ''}
-
-      ${loan.co_applicant_name ? `
-      <div class="section-title">Co-Applicant</div>
-      <table><tr><td class="label">Name</td><td>${loan.co_applicant_name} (${loan.co_applicant_relation || ''})</td></tr></table>
-      ` : ''}
-
-      ${loan.guarantor_name ? `
-      <div class="section-title">Guarantor</div>
-      <table><tr><td class="label">Name</td><td>${loan.guarantor_name} &middot; ${loan.guarantor_mobile || ''}</td></tr></table>
-      ` : ''}
-
-      <div class="sign-row">
-        <div class="sign-box"><div class="line"></div>Applicant Signature</div>
-        <div class="sign-box"><div class="line"></div>Authorized Officer</div>
-      </div>
-    </body></html>
-  `);
-  printWindow.document.close();
-  printWindow.print();
-}
-
-let currentLoanPage = 0;
-async function loadLoans(page = 0) {
-  currentLoanPage = page;
-  const isAdmin = currentUser.role === 'super_admin';
-  const from = page * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
-
-  let q = db.from('loans').select('*, members(account_no, first_name, last_name)', { count: 'exact' }).order('created_at', { ascending: false }).range(from, to);
-  if (!isAdmin) q = q.eq('branch_id', currentBranchId);
-  const { data, count } = await q;
-
-  let html = '<table><thead><tr><th>Loan No</th><th>Member</th><th>Category</th><th>Amount</th><th>Rate</th><th>BM Status</th><th>HO Status</th><th>Status</th></tr></thead><tbody>';
-  if (data && data.length) {
-    data.forEach(l => {
-      const name = l.members ? `${l.members.first_name} ${l.members.last_name || ''}` : '-';
-      const catLabel = categoryLabels[l.category] || l.category;
-      html += `<tr><td>${l.loan_no}</td><td>${name}</td><td>${catLabel}</td><td>${fmt(l.loan_amount)}</td><td>${l.interest_rate != null ? l.interest_rate + '%' : '-'}</td><td><span class="badge ${l.bm_approval_status === 'approved' ? 'bg' : l.bm_approval_status === 'rejected' ? 'br' : 'ba'}">${l.bm_approval_status}</span></td><td><span class="badge ${l.head_office_approval_status === 'approved' ? 'bg' : l.head_office_approval_status === 'rejected' ? 'br' : l.head_office_approval_status === 'not_required' ? 'bb' : 'ba'}">${l.head_office_approval_status}</span></td><td><span class="badge ${l.status === 'active' ? 'bg' : l.status === 'overdue' ? 'br' : 'ba'}">${l.status}</span></td></tr>`;
-    });
-  } else {
-    html += '<tr><td colspan="8">Koi loan nahi mila</td></tr>';
-  }
-  html += '</tbody></table>';
-  document.getElementById('loan-table').innerHTML = html;
-
-  const totalPages = Math.ceil((count || 0) / PAGE_SIZE);
-  let pagHtml = `<button class="btn" onclick="loadLoans(${Math.max(0, page - 1)})" ${page === 0 ? 'disabled' : ''}>Previous</button>`;
-  pagHtml += `<span style="padding:8px 12px;font-size:12px;color:#666">Page ${page + 1} of ${totalPages || 1} (${count || 0} total loans)</span>`;
-  pagHtml += `<button class="btn" onclick="loadLoans(${page + 1})" ${page + 1 >= totalPages ? 'disabled' : ''}>Next</button>`;
-  document.getElementById('loan-pagination').innerHTML = pagHtml;
-}
-
-// ============================================================
-// APPROVAL WORKFLOW: Branch Manager + Head Office
-// ============================================================
-async function loadApprovals() {
-  const isAdmin = currentUser.role === 'super_admin';
-  const isBM = currentUser.role === 'branch_manager';
-  const tableEl = document.getElementById('approval-table');
-
-  if (!isAdmin && !isBM) {
-    tableEl.innerHTML = '<p style="color:#888;">Sirf Branch Manager aur Head Office hi approvals dekh sakte hain.</p>';
-    return;
-  }
-
-  let q = db.from('loans').select('*, members(account_no, first_name, last_name)').order('created_at', { ascending: false });
-  if (isAdmin) {
-    q = q.eq('head_office_approval_status', 'pending');
-  } else {
-    q = q.eq('branch_id', currentBranchId).eq('bm_approval_status', 'pending');
-  }
-  const { data } = await q;
-
-  let html = `<p style="font-size:12px;color:#888;margin-bottom:10px;">${isAdmin ? 'Head Office: Loans jo BM se approved hain aur 7 Lakh se zyada hain' : 'Branch Manager: Naye loans jo appraisal ke baad approval ke liye aaye hain'}</p>`;
-  html += '<table><thead><tr><th>Loan No</th><th>Member</th><th>Category</th><th>Amount</th><th>Guarantor</th><th>Action</th></tr></thead><tbody>';
-  if (data && data.length) {
-    data.forEach(l => {
-      const name = l.members ? `${l.members.first_name} ${l.members.last_name || ''}` : '-';
-      const catLabel = categoryLabels[l.category] || l.category;
-      html += `<tr id="appr-row-${l.id}"><td>${l.loan_no}</td><td>${name}</td><td>${catLabel}</td><td>${fmt(l.loan_amount)}</td><td>${l.guarantor_name || '-'}</td>
-        <td><button class="btn btn-primary" style="padding:4px 10px;font-size:11px;" onclick="approveLoan('${l.id}', ${isAdmin})">Approve</button>
-        <button class="btn" style="padding:4px 10px;font-size:11px;background:#FCEBEB;color:#A32D2D;" onclick="rejectLoan('${l.id}', ${isAdmin})">Reject</button></td></tr>`;
-    });
-  } else {
-    html += '<tr><td colspan="6">Koi pending approval nahi hai</td></tr>';
-  }
-  html += '</tbody></table>';
-  tableEl.innerHTML = html;
-}
-
-async function approveLoan(loanId, isHeadOffice) {
-  if (isHeadOffice) {
-    await db.from('loans').update({
-      head_office_approval_status: 'approved', head_office_approved_by: currentUser.id,
-      head_office_approval_date: new Date().toISOString(), status: 'active'
-    }).eq('id', loanId);
-  } else {
-    const { data: loan } = await db.from('loans').select('requires_head_office, loan_amount, category').eq('id', loanId).single();
-    const updates = {
-      bm_approval_status: 'approved', bm_approved_by: currentUser.id, bm_approval_date: new Date().toISOString()
-    };
-    if (!loan.requires_head_office) {
-      updates.status = 'active';
-      // For small_business (100-day), generate collection schedule on BM approval
-      if (loan.category === 'small_business') {
-        const dailyCollection = loan.loan_amount / 100;
-        const collections = [];
-        const startDate = new Date();
-        for (let day = 1; day <= 100; day++) {
-          const collDate = new Date(startDate); collDate.setDate(collDate.getDate() + day - 1);
-          collections.push({ loan_id: loanId, day_number: day, collection_date: collDate.toISOString().split('T')[0], amount_due: dailyCollection });
-        }
-        await db.from('loan_collections').insert(collections);
-      }
-    } else {
-      updates.status = 'pending_ho';
-    }
-    await db.from('loans').update(updates).eq('id', loanId);
-  }
-  document.getElementById('appr-row-' + loanId).innerHTML = '<td colspan="6" style="color:#0F6E56;">✓ Approved</td>';
-}
-
-async function rejectLoan(loanId, isHeadOffice) {
-  const field = isHeadOffice ? 'head_office_approval_status' : 'bm_approval_status';
-  await db.from('loans').update({ [field]: 'rejected', status: 'rejected' }).eq('id', loanId);
-  document.getElementById('appr-row-' + loanId).innerHTML = '<td colspan="6" style="color:#A32D2D;">✗ Rejected</td>';
-}
-
-async function loadCollections() {
-  const today = new Date().toISOString().split('T')[0];
-  const isAdmin = currentUser.role === 'super_admin';
-
-  let q = db.from('loan_collections')
-    .select('*, loans(loan_no, branch_id, members(account_no, first_name, last_name))')
-    .eq('collection_date', today)
-    .eq('status', 'pending');
-  const { data } = await q;
-
-  let filtered = data || [];
-  if (!isAdmin) filtered = filtered.filter(c => c.loans?.branch_id === currentBranchId);
-
-  let html = '<table><thead><tr><th>Loan No</th><th>Member</th><th>Day</th><th>Amount Due</th><th>Action</th></tr></thead><tbody>';
-  if (filtered.length) {
-    filtered.forEach(c => {
-      const name = c.loans?.members ? `${c.loans.members.first_name} ${c.loans.members.last_name || ''}` : '-';
-      html += `<tr id="coll-row-${c.id}"><td>${c.loans?.loan_no || '-'}</td><td>${name}</td><td>${c.day_number}/100</td><td>${fmt(c.amount_due)}</td><td><button class="btn btn-primary" onclick="collectPayment('${c.id}', '${c.loan_id}')">Collect</button></td></tr>`;
-    });
-  } else {
-    html += '<tr><td colspan="5">Aaj koi collection due nahi hai</td></tr>';
-  }
-  html += '</tbody></table>';
-  document.getElementById('collection-table').innerHTML = html;
-}
-
-async function collectPayment(collectionId, loanId) {
-  await db.from('loan_collections').update({
-    status: 'collected', amount_collected: 0, collected_by: currentUser.id, collected_at: new Date().toISOString()
-  }).eq('id', collectionId);
-
-  const { data: loan } = await db.from('loans').select('days_completed, total_collected, daily_collection').eq('id', loanId).single();
-  if (loan) {
-    await db.from('loans').update({
-      days_completed: loan.days_completed + 1,
-      total_collected: loan.total_collected + loan.daily_collection
-    }).eq('id', loanId);
-  }
-
-  document.getElementById('coll-row-' + collectionId).innerHTML = '<td colspan="5" style="color:#3B6D11">Collected ✓</td>';
-}
-
-// Allow Enter key to submit login
-document.getElementById('login-password').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
-</script>
-</body>
-</html>
+-- ============================================================
+-- ASA COOPERATIVE SOCIETY - CORE BANKING DATABASE SCHEMA v2
+-- Run this entire file in Supabase SQL Editor (one click)
+-- This DROPS old tables first for a clean fresh start
+-- ============================================================
+
+-- Clean slate: drop everything in correct order (children first)
+drop table if exists group_loan_members cascade;
+drop table if exists loan_collections cascade;
+drop table if exists transactions cascade;
+drop table if exists staff_attendance cascade;
+drop table if exists staff_leaves cascade;
+drop table if exists staff_leave_balance cascade;
+drop table if exists loans cascade;
+drop table if exists loan_schemes cascade;
+drop table if exists metal_rates cascade;
+drop table if exists fixed_deposits cascade;
+drop table if exists recurring_deposits cascade;
+drop table if exists term_deposits cascade;
+drop table if exists members cascade;
+drop table if exists staff cascade;
+drop table if exists branches cascade;
+
+-- BRANCHES TABLE
+create table branches (
+  id uuid primary key default gen_random_uuid(),
+  branch_code text unique not null,
+  branch_name text not null,
+  address text,
+  district text,
+  state text,
+  created_at timestamp with time zone default now()
+);
+
+-- STAFF / USERS TABLE (login accounts)
+create table staff (
+  id uuid primary key default gen_random_uuid(),
+  branch_id uuid references branches(id),
+  full_name text not null,
+  mobile text,
+  role text not null default 'staff', -- 'super_admin', 'branch_manager', 'staff', 'agent'
+  username text unique not null,
+  password_hash text not null,
+  bm_approval_limit numeric default 700000, -- Branch Manager approval power (7 lakh default)
+  date_of_joining date,
+  designation text,
+  is_active boolean default true,
+  created_at timestamp with time zone default now()
+);
+
+-- STAFF ATTENDANCE TABLE
+create table staff_attendance (
+  id uuid primary key default gen_random_uuid(),
+  staff_id uuid references staff(id),
+  branch_id uuid references branches(id),
+  attendance_date date not null,
+  check_in_time timestamp with time zone,
+  check_out_time timestamp with time zone,
+  status text default 'present', -- present/absent/half_day/on_leave
+  notes text,
+  created_at timestamp with time zone default now(),
+  unique(staff_id, attendance_date)
+);
+
+-- STAFF LEAVE APPLICATIONS
+create table staff_leaves (
+  id uuid primary key default gen_random_uuid(),
+  staff_id uuid references staff(id),
+  branch_id uuid references branches(id),
+  leave_type text not null, -- casual/sick/maternity/paternity/earned/unpaid
+  start_date date not null,
+  end_date date not null,
+  total_days int,
+  reason text,
+  status text default 'pending', -- pending/approved/rejected
+  approved_by uuid references staff(id),
+  approval_date timestamp with time zone,
+  applied_at timestamp with time zone default now()
+);
+
+-- STAFF LEAVE BALANCE
+create table staff_leave_balance (
+  id uuid primary key default gen_random_uuid(),
+  staff_id uuid references staff(id),
+  year int not null,
+  casual_total numeric default 12,
+  casual_used numeric default 0,
+  sick_total numeric default 12,
+  sick_used numeric default 0,
+  earned_total numeric default 15,
+  earned_used numeric default 0,
+  maternity_total numeric default 182,
+  maternity_used numeric default 0,
+  unique(staff_id, year)
+);
+
+-- MEMBERS TABLE
+create table members (
+  id uuid primary key default gen_random_uuid(),
+  account_no text unique not null,
+  branch_id uuid references branches(id),
+  account_type text not null, -- Mahila/Simple/Senior/Sukanya/Saman/Daily/Super/Classic
+  first_name text not null,
+  middle_name text,
+  last_name text,
+  father_husband_name text,
+  date_of_birth date,
+  gender text,
+  mobile_primary text not null,
+  mobile_secondary text,
+  email text,
+  occupation text,
+  monthly_income numeric,
+  address text,
+  village_town text,
+  tehsil text,
+  district text,
+  state text,
+  pin_code text,
+  photo_url text,
+  -- KYC ID Proofs
+  aadhar_no text,
+  aadhar_photo_url text,
+  pan_no text,
+  pan_photo_url text,
+  voter_id_no text,
+  voter_id_photo_url text,
+  driving_license_no text,
+  driving_license_photo_url text,
+  -- Address Proof (one or more)
+  address_proof_type text, -- electricity_bill / bank_statement / aadhar_card / mobile_bill / existing_passbook
+  address_proof_url text,
+  opening_amount numeric not null,
+  payment_mode text, -- cash/upi/cheque
+  current_balance numeric default 0,
+  -- Nominee Details
+  nominee_name text,
+  nominee_relation text,
+  nominee_mobile text,
+  nominee_dob date,
+  nominee_photo_url text,
+  nominee_aadhar_no text,
+  kyc_status text default 'pending', -- pending/partial/complete
+  -- Cross Sale (mandatory for staff to pitch, customer can decline insurance but demat is separate)
+  cross_sale_group_insurance boolean default false,
+  cross_sale_group_insurance_decline_reason text,
+  cross_sale_health_insurance boolean default false,
+  cross_sale_health_insurance_decline_reason text,
+  cross_sale_life_insurance boolean default false,
+  cross_sale_life_insurance_decline_reason text,
+  cross_sale_sip boolean default false,
+  cross_sale_sip_decline_reason text,
+  cross_sale_mutual_fund boolean default false,
+  cross_sale_mutual_fund_decline_reason text,
+  cross_sale_demat boolean default false,
+  cross_sale_demat_decline_reason text,
+  cross_sale_gold_silver_invest boolean default false,
+  cross_sale_gold_silver_invest_amount numeric, -- ₹100 to ₹1000, customer's choice
+  cross_sale_gold_silver_decline_reason text,
+  cross_sale_pitched_by_staff boolean default false, -- staff must confirm they pitched all products
+  status text default 'active', -- active/closed/frozen
+  opened_by uuid references staff(id),
+  opened_at timestamp with time zone default now()
+);
+
+-- FD (FIXED DEPOSIT) TABLE
+create table fixed_deposits (
+  id uuid primary key default gen_random_uuid(),
+  fd_no text unique not null,
+  member_id uuid references members(id),
+  branch_id uuid references branches(id),
+  principal_amount numeric not null,
+  tenure_years numeric not null, -- 1, 3, or 5
+  category text not null, -- general / senior
+  interest_rate numeric not null,
+  start_date date not null,
+  maturity_date date not null,
+  maturity_amount numeric,
+  status text default 'active', -- active/matured/closed
+  created_at timestamp with time zone default now()
+);
+
+-- RD (RECURRING DEPOSIT) TABLE
+create table recurring_deposits (
+  id uuid primary key default gen_random_uuid(),
+  rd_no text unique not null,
+  member_id uuid references members(id),
+  branch_id uuid references branches(id),
+  monthly_installment numeric not null,
+  tenure_months int not null,
+  category text not null, -- general / girls / senior
+  interest_rate numeric not null,
+  start_date date not null,
+  maturity_date date,
+  installments_paid int default 0,
+  total_paid numeric default 0,
+  status text default 'active',
+  created_at timestamp with time zone default now()
+);
+
+-- TD (TERM DEPOSIT) TABLE
+create table term_deposits (
+  id uuid primary key default gen_random_uuid(),
+  td_no text unique not null,
+  member_id uuid references members(id),
+  branch_id uuid references branches(id),
+  deposit_amount numeric not null,
+  tenure_days int not null, -- 30/90/180/365
+  category text not null, -- general / girls / senior
+  interest_rate numeric not null,
+  start_date date not null,
+  maturity_date date not null,
+  maturity_amount numeric,
+  status text default 'active',
+  created_at timestamp with time zone default now()
+);
+
+-- LOAN SCHEMES REFERENCE TABLE (Gold Loan 5 schemes, and other category rate cards)
+-- METAL RATES TABLE (manual daily gold/silver rate entry, used by all branches)
+create table metal_rates (
+  id uuid primary key default gen_random_uuid(),
+  metal_type text not null, -- 'gold' or 'silver'
+  rate_date date not null default current_date,
+  rate_24k_or_pure_per_gram numeric not null, -- 24K gold rate, or pure silver rate, per gram
+  set_by uuid references staff(id),
+  created_at timestamp with time zone default now(),
+  unique(metal_type, rate_date)
+);
+
+create table loan_schemes (
+  id uuid primary key default gen_random_uuid(),
+  category text not null, -- gold_loan, home_loan, small_business, big_business, shiksha, group_loan, fd_loan, shaadi_loan, silver_loan, consumer_loan, medical_emergency_loan
+  scheme_name text,
+  amount_min numeric,
+  amount_max numeric,
+  -- Carat-based rate range for Gold Loan: rate_24kt = lowest, rate_18kt = highest (linear interpolation between)
+  rate_24kt numeric, -- monthly rate % at 24kt (lowest)
+  rate_18kt numeric, -- monthly rate % at 18kt (highest)
+  base_monthly_rate numeric, -- for silver/non-gold (flat per month %)
+  base_annual_rate_min numeric, -- for annual ROI based loans
+  base_annual_rate_max numeric,
+  grace_period_days int default 7,
+  late_rate_step numeric default 0.35, -- rate added per month of default after grace period
+  max_default_months int default 3, -- months allowed before notice/auction process triggers
+  notice_month int default 4, -- month at which notice is sent if unpaid
+  auction_after_months int default 5, -- month at which auction happens (start of month)
+  pf_type text default 'percent', -- 'percent' (% of loan amount) or 'flat_per_gram' (₹ per gram of net weight)
+  pf_percent numeric, -- processing fee % (if pf_type = percent)
+  pf_flat_per_gram numeric, -- processing fee ₹/gram (if pf_type = flat_per_gram)
+  tenure_days int,
+  tenure_years numeric,
+  tenure_months int default 12,
+  renewal_mandatory boolean default true,
+  display_order int
+);
+
+-- Seed Gold Loan 5 schemes (confirmed amounts, rates, PF structure)
+insert into loan_schemes (category, scheme_name, amount_min, amount_max, rate_24kt, rate_18kt, grace_period_days, late_rate_step, max_default_months, notice_month, auction_after_months, pf_type, pf_percent, pf_flat_per_gram, tenure_months, renewal_mandatory, display_order) values
+('gold_loan', 'Scheme 1 (₹5,000 - ₹50,000)', 5000, 50000, 1.25, 2.50, 7, 0.35, 3, 4, 5, 'percent', 2.25, null, 12, true, 1),
+('gold_loan', 'Scheme 2 (₹50,001 - ₹1,00,000)', 50001, 100000, 1.35, 2.00, 7, 0.35, 3, 4, 5, 'flat_per_gram', null, 2.00, 12, true, 2),
+('gold_loan', 'Scheme 3 (₹1,00,001 - ₹2,50,000)', 100001, 250000, 0.75, 1.50, 7, 0.35, 3, 4, 5, 'flat_per_gram', null, 1.00, 12, true, 3),
+('gold_loan', 'Scheme 4 (₹2,50,001 - ₹4,99,999)', 250001, 499999, 0.65, 1.25, 7, 0.35, 3, 4, 5, 'flat_per_gram', null, 0.85, 12, true, 4),
+('gold_loan', 'Scheme 5 (₹5,00,000 - ₹10,00,000)', 500000, 1000000, 0.50, 0.83, 7, 0.35, 3, 4, 5, 'flat_per_gram', null, 0.55, 12, true, 5);
+
+-- Other loan category rate cards
+insert into loan_schemes (category, scheme_name, amount_min, amount_max, base_annual_rate_min, base_annual_rate_max, pf_percent, tenure_years, display_order) values
+('home_loan', 'Tier 1 (2L-10L, CIBIL based)', 200000, 1000000, 14, 18, 2.5, 5, 1),
+('home_loan', 'Tier 2 (Above 10L, 85% of property value)', 1000001, 99999999, 9, 12, 2.5, 7, 2);
+
+insert into loan_schemes (category, scheme_name, amount_min, amount_max, pf_percent, tenure_days, display_order) values
+('small_business', 'Interest Free 100-day', 5000, 50000, 1.5, 100, 1);
+
+insert into loan_schemes (category, scheme_name, amount_min, amount_max, base_annual_rate_min, base_annual_rate_max, pf_percent, tenure_years, display_order) values
+('big_business', 'Standard', 100000, 1000000, 9.5, 14, 2.0, 5, 1);
+
+insert into loan_schemes (category, scheme_name, amount_min, amount_max, base_annual_rate_min, base_annual_rate_max, pf_percent, display_order) values
+('shiksha_loan', 'Saathi Shiksha Loan', 100000, 1000000, 15, 15, 0, 1);
+
+insert into loan_schemes (category, scheme_name, amount_min, amount_max, base_annual_rate_min, base_annual_rate_max, pf_percent, tenure_days, display_order) values
+('group_loan', 'Min 7 Members', 10000, 100000, 10, 14, 3.0, 365, 1);
+
+insert into loan_schemes (category, scheme_name, base_annual_rate_min, display_order) values
+('fd_loan', 'Loan Against FD (70% of deposit)', 12, 1);
+
+insert into loan_schemes (category, scheme_name, amount_min, amount_max, display_order) values
+('shaadi_loan', 'Sukanya Shaadi Loan (against property/shop papers)', 50000, 300000, 1);
+
+insert into loan_schemes (category, scheme_name, base_monthly_rate, base_annual_rate_min, tenure_days, pf_percent, display_order) values
+('silver_loan', 'Silver Loan (45% of weight value)', 0.625, 7.5, 90, 2.5, 1);
+
+insert into loan_schemes (category, scheme_name, amount_min, amount_max, pf_percent, display_order) values
+('consumer_loan', 'Consumer Loan (70% financed, 30% by customer)', 5000, 500000, 1.5, 1);
+
+insert into loan_schemes (category, scheme_name, amount_min, amount_max, base_monthly_rate, pf_percent, display_order) values
+('medical_emergency_loan', 'Medical Emergency Loan', 5000, 500000, 0.90, 3.0, 1);
+
+-- LOANS TABLE (Master table for ALL loan categories)
+create table loans (
+  id uuid primary key default gen_random_uuid(),
+  loan_no text unique not null,
+  member_id uuid references members(id),
+  branch_id uuid references branches(id),
+  category text not null, -- gold_loan/home_loan/small_business/big_business/shiksha_loan/group_loan/fd_loan/shaadi_loan/silver_loan
+  scheme_id uuid references loan_schemes(id),
+  loan_amount numeric not null,
+  interest_rate numeric, -- final applied rate
+  tenure_days int,
+  tenure_years numeric,
+  pf_amount numeric, -- processing fee charged
+  -- Gold/Silver specific
+  item_weight_grams numeric,
+  item_purity text,
+  item_description text,
+  item_photo_url text,
+  -- Home loan specific
+  cibil_score int,
+  property_value numeric,
+  property_address text,
+  -- Group loan specific
+  group_name text,
+  group_member_count int,
+  -- FD loan specific
+  linked_fd_id uuid references fixed_deposits(id),
+  -- Shaadi loan specific
+  security_document_type text, -- home_paper / shop_paper
+  guarantor_name text,
+  guarantor_mobile text,
+  guarantor_aadhar text,
+  -- Nominee & Co-Applicant (all loans except gold_loan)
+  loan_nominee_name text,
+  loan_nominee_relation text,
+  loan_nominee_mobile text,
+  co_applicant_name text,
+  co_applicant_relation text,
+  co_applicant_mobile text,
+  co_applicant_aadhar text,
+  -- Auto-Debit (EMI auto-deduct from member's savings account balance)
+  auto_debit_enabled boolean default true,
+  auto_debit_day_of_month int, -- for monthly EMI loans
+  last_auto_debit_date date,
+  -- Health insurance cross-sale (mandatory pitch, customer can decline)
+  health_insurance_opted boolean default false,
+  health_insurance_declined_reason text,
+  -- Approval Workflow
+  appraised_by uuid references staff(id), -- branch staff who logs the loan
+  appraisal_notes text,
+  bm_approved_by uuid references staff(id),
+  bm_approval_status text default 'pending', -- pending/approved/rejected
+  bm_approval_date timestamp with time zone,
+  head_office_approved_by uuid references staff(id),
+  head_office_approval_status text default 'not_required', -- not_required/pending/approved/rejected
+  head_office_approval_date timestamp with time zone,
+  requires_head_office boolean default false, -- true if amount exceeds BM approval limit (7 lakh)
+  -- Status & tracking
+  start_date date,
+  days_completed int default 0,
+  months_completed int default 0,
+  total_collected numeric default 0,
+  total_penalty numeric default 0,
+  missed_payment_count int default 0,
+  current_late_stage text default 'normal', -- normal/grace/month1_late/month2_late/month3_late/notice_sent/auction_pending/auctioned
+  base_interest_rate numeric, -- the original carat-based rate before any late escalation
+  current_interest_rate numeric, -- current applied rate (base + escalations)
+  default_months_count int default 0, -- how many consecutive months missed
+  last_missed_date date,
+  top_up_amount numeric default 0, -- additional amount disbursed if market value increased and top-up chosen
+  top_up_pf_paid numeric default 0,
+  notice_sent_date date,
+  auction_scheduled_date date,
+  status text default 'pending_appraisal', -- pending_appraisal/pending_bm/pending_ho/active/closed/overdue/notice_sent/auction_pending/auctioned/rejected
+  approved_by uuid references staff(id),
+  created_at timestamp with time zone default now()
+);
+
+-- GROUP LOAN MEMBERS (for group loans, track each member)
+create table group_loan_members (
+  id uuid primary key default gen_random_uuid(),
+  loan_id uuid references loans(id),
+  member_id uuid references members(id),
+  share_amount numeric,
+  created_at timestamp with time zone default now()
+);
+
+-- DAILY LOAN COLLECTIONS TABLE (tracks each day's payment)
+create table loan_collections (
+  id uuid primary key default gen_random_uuid(),
+  loan_id uuid references loans(id),
+  day_number int not null,
+  collection_date date not null,
+  amount_due numeric not null,
+  amount_collected numeric default 0,
+  penalty numeric default 0,
+  status text default 'pending', -- pending/collected/missed
+  collected_by uuid references staff(id),
+  collected_at timestamp with time zone,
+  created_at timestamp with time zone default now()
+);
+
+-- LEDGER / TRANSACTIONS TABLE
+create table transactions (
+  id uuid primary key default gen_random_uuid(),
+  voucher_no text unique not null,
+  member_id uuid references members(id),
+  branch_id uuid references branches(id),
+  transaction_type text not null, -- deposit/withdrawal/fd_open/rd_install/loan_disburse/loan_collect/interest_credit
+  debit_amount numeric default 0,
+  credit_amount numeric default 0,
+  narration text,
+  transaction_date date default current_date,
+  created_by uuid references staff(id),
+  created_at timestamp with time zone default now()
+);
+
+-- INDEXES for performance (CRITICAL at 50 lakh+ records scale)
+create index idx_members_branch on members(branch_id);
+create index idx_members_account_no on members(account_no);
+create index idx_members_mobile on members(mobile_primary);
+create index idx_members_aadhar on members(aadhar_no);
+create index idx_members_status on members(status);
+create index idx_loans_member on loans(member_id);
+create index idx_loans_branch on loans(branch_id);
+create index idx_loans_status on loans(status);
+create index idx_loan_collections_loan on loan_collections(loan_id);
+create index idx_loan_collections_date on loan_collections(collection_date);
+create index idx_loan_collections_status on loan_collections(status);
+create index idx_transactions_member on transactions(member_id);
+create index idx_transactions_branch on transactions(branch_id);
+create index idx_transactions_date on transactions(transaction_date);
+create index idx_fd_member on fixed_deposits(member_id);
+create index idx_fd_branch on fixed_deposits(branch_id);
+create index idx_rd_member on recurring_deposits(member_id);
+create index idx_rd_branch on recurring_deposits(branch_id);
+create index idx_td_member on term_deposits(member_id);
+create index idx_td_branch on term_deposits(branch_id);
+create index idx_staff_username on staff(username);
+create index idx_staff_branch on staff(branch_id);
+
+-- Composite indexes for common dashboard queries at scale
+create index idx_members_branch_status on members(branch_id, status);
+create index idx_loans_branch_status on loans(branch_id, status);
+create index idx_collections_loan_date on loan_collections(loan_id, collection_date);
+
+-- New table indexes
+create index idx_loans_category on loans(category);
+create index idx_loans_bm_status on loans(bm_approval_status);
+create index idx_loans_ho_status on loans(head_office_approval_status);
+create index idx_attendance_staff_date on staff_attendance(staff_id, attendance_date);
+create index idx_attendance_branch_date on staff_attendance(branch_id, attendance_date);
+create index idx_leaves_staff on staff_leaves(staff_id);
+create index idx_leaves_status on staff_leaves(status);
+create index idx_loan_schemes_category on loan_schemes(category);
+create index idx_metal_rates_type_date on metal_rates(metal_type, rate_date);
+create index idx_group_loan_members_loan on group_loan_members(loan_id);
+
+-- ============================================================
+-- ROW LEVEL SECURITY (RLS) - ensures branch staff only see their branch
+-- Super admin (head office) sees everything
+-- ============================================================
+alter table members enable row level security;
+alter table loans enable row level security;
+alter table fixed_deposits enable row level security;
+alter table recurring_deposits enable row level security;
+alter table term_deposits enable row level security;
+alter table transactions enable row level security;
+alter table loan_collections enable row level security;
+
+-- Allow all authenticated access for now (tighten later with auth.uid() based policies)
+create policy "Allow all for authenticated users" on members for all using (true);
+create policy "Allow all for authenticated users" on loans for all using (true);
+create policy "Allow all for authenticated users" on fixed_deposits for all using (true);
+create policy "Allow all for authenticated users" on recurring_deposits for all using (true);
+create policy "Allow all for authenticated users" on term_deposits for all using (true);
+create policy "Allow all for authenticated users" on transactions for all using (true);
+create policy "Allow all for authenticated users" on loan_collections for all using (true);
+create policy "Allow all for authenticated users" on branches for all using (true);
+create policy "Allow all for authenticated users" on staff for all using (true);
+create policy "Allow all for authenticated users" on staff_attendance for all using (true);
+create policy "Allow all for authenticated users" on staff_leaves for all using (true);
+create policy "Allow all for authenticated users" on staff_leave_balance for all using (true);
+create policy "Allow all for authenticated users" on loan_schemes for all using (true);
+create policy "Allow all for authenticated users" on metal_rates for all using (true);
+alter table metal_rates enable row level security;
+create policy "Allow all for authenticated users" on group_loan_members for all using (true);
+alter table branches enable row level security;
+alter table staff enable row level security;
+alter table staff_attendance enable row level security;
+alter table staff_leaves enable row level security;
+alter table staff_leave_balance enable row level security;
+alter table loan_schemes enable row level security;
+alter table group_loan_members enable row level security;
+
+-- ============================================================
+-- SEED DATA: All 35 Rajasthan Branches + Admin login
+-- ============================================================
+insert into branches (branch_code, branch_name, district, state) values
+('BR-001', 'Kota Main Branch', 'Kota', 'Rajasthan'),
+('BR-002', 'Bundi Branch', 'Bundi', 'Rajasthan'),
+('BR-003', 'Baran Branch', 'Baran', 'Rajasthan'),
+('BR-004', 'Chhabra Branch', 'Baran', 'Rajasthan'),
+('BR-005', 'Sikar Branch', 'Sikar', 'Rajasthan'),
+('BR-006', 'Jaipur Branch', 'Jaipur', 'Rajasthan'),
+('BR-007', 'Bikaner Branch', 'Bikaner', 'Rajasthan'),
+('BR-008', 'Neem Ka Thana Branch', 'Sikar', 'Rajasthan'),
+('BR-009', 'Ajmer Branch', 'Ajmer', 'Rajasthan'),
+('BR-010', 'Alwar Branch', 'Alwar', 'Rajasthan'),
+('BR-011', 'Banswara Branch', 'Banswara', 'Rajasthan'),
+('BR-012', 'Barmer Branch', 'Barmer', 'Rajasthan'),
+('BR-013', 'Bharatpur Branch', 'Bharatpur', 'Rajasthan'),
+('BR-014', 'Bhilwara Branch', 'Bhilwara', 'Rajasthan'),
+('BR-015', 'Chittorgarh Branch', 'Chittorgarh', 'Rajasthan'),
+('BR-016', 'Churu Branch', 'Churu', 'Rajasthan'),
+('BR-017', 'Dausa Branch', 'Dausa', 'Rajasthan'),
+('BR-018', 'Dholpur Branch', 'Dholpur', 'Rajasthan'),
+('BR-019', 'Dungarpur Branch', 'Dungarpur', 'Rajasthan'),
+('BR-020', 'Hanumangarh Branch', 'Hanumangarh', 'Rajasthan'),
+('BR-021', 'Jaisalmer Branch', 'Jaisalmer', 'Rajasthan'),
+('BR-022', 'Jalore Branch', 'Jalore', 'Rajasthan'),
+('BR-023', 'Jhalawar Branch', 'Jhalawar', 'Rajasthan'),
+('BR-024', 'Jhunjhunu Branch', 'Jhunjhunu', 'Rajasthan'),
+('BR-025', 'Jodhpur Branch', 'Jodhpur', 'Rajasthan'),
+('BR-026', 'Karauli Branch', 'Karauli', 'Rajasthan'),
+('BR-027', 'Nagaur Branch', 'Nagaur', 'Rajasthan'),
+('BR-028', 'Pali Branch', 'Pali', 'Rajasthan'),
+('BR-029', 'Pratapgarh Branch', 'Pratapgarh', 'Rajasthan'),
+('BR-030', 'Rajsamand Branch', 'Rajsamand', 'Rajasthan'),
+('BR-031', 'Sawai Madhopur Branch', 'Sawai Madhopur', 'Rajasthan'),
+('BR-032', 'Sirohi Branch', 'Sirohi', 'Rajasthan'),
+('BR-033', 'Sri Ganganagar Branch', 'Sri Ganganagar', 'Rajasthan'),
+('BR-034', 'Tonk Branch', 'Tonk', 'Rajasthan'),
+('BR-035', 'Udaipur Branch', 'Udaipur', 'Rajasthan');
+
+-- Default super admin login (username: admin, password: admin123 - CHANGE THIS AFTER FIRST LOGIN)
+insert into staff (branch_id, full_name, role, username, password_hash)
+select id, 'Head Office Admin', 'super_admin', 'admin', 'admin123'
+from branches where branch_code = 'BR-001';
